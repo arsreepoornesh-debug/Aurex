@@ -11,16 +11,37 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const packages = await prisma.package.findMany({
-      orderBy: { createdAt: 'asc' },
-      include: {
-        _count: {
-          select: { clientPackages: true },
+    const [packages, clientPackages] = await Promise.all([
+      prisma.package.findMany({
+        orderBy: { createdAt: 'asc' },
+        include: {
+          _count: {
+            select: { clientPackages: true },
+          },
         },
-      },
-    });
+      }),
+      prisma.clientPackage.findMany({
+        orderBy: { startDate: 'desc' },
+        include: {
+          client: {
+            select: {
+              id: true,
+              clientId: true,
+              name: true,
+              phone: true,
+              email: true,
+              status: true,
+            },
+          },
+          package: true,
+        },
+      }),
+    ]);
 
-    return NextResponse.json(packages);
+    return NextResponse.json({
+      packages,
+      clientPackages,
+    });
   } catch (err: any) {
     console.error('Error fetching master packages:', err);
     return NextResponse.json({ error: 'Failed to fetch packages' }, { status: 500 });

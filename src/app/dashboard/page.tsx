@@ -47,6 +47,7 @@ import {
   UsersRound,
   BarChart3,
   LayoutGrid,
+  Package,
 } from 'lucide-react';
 import { Header } from '@/components/layout/Header';
 import { formatCurrency, formatDate, formatDateTime, getServiceMaxCapacity } from '@/lib/utils';
@@ -994,6 +995,178 @@ export default function DashboardPage() {
               )}
             </div>
           )}
+        </div>
+
+        {/* ========================================================================= */}
+        {/* 4A. BILLING & PAYMENTS OVERVIEW (ACTIVE PAID, YET TO PAY, PRIVATE & SEMI-PRIVATE) */}
+        {/* ========================================================================= */}
+        <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm p-5 space-y-4">
+          <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-3 pb-3 border-b border-slate-100">
+            <div className="flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-xl bg-emerald-100 text-emerald-600 flex items-center justify-center font-black">
+                ₹
+              </div>
+              <div>
+                <h3 className="text-sm font-extrabold text-slate-900">Billing & Payments Overview</h3>
+                <p className="text-xs text-slate-400">
+                  Active fully paid accounts, pending balances, and private vs semi-private collections
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setShowPaymentModal(true)}
+                className="px-3.5 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition flex items-center gap-1.5 shadow-sm"
+              >
+                <PlusCircle className="w-3.5 h-3.5" />
+                <span>+ Log Payment</span>
+              </button>
+              <Link
+                href="/dashboard/payments"
+                className="px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold transition flex items-center gap-1"
+              >
+                <span>Full Billing Ledger</span>
+                <ArrowRight className="w-3.5 h-3.5" />
+              </Link>
+            </div>
+          </div>
+
+          {/* 4 Quick Stat Metric Badges */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+            <Link
+              href="/dashboard/payments"
+              className="p-3.5 rounded-xl bg-emerald-50/70 border border-emerald-200/60 hover:border-emerald-400 transition flex items-center justify-between group"
+            >
+              <div>
+                <span className="text-[11px] font-bold text-emerald-800 uppercase tracking-wider block">Active Paid Clients</span>
+                <div className="text-xl font-black text-emerald-900 mt-0.5">
+                  {allClients.filter((c) => c.status === 'ACTIVE').length} Active
+                </div>
+                <span className="text-[10px] text-emerald-700 font-semibold">✓ 0 Outstanding Balance</span>
+              </div>
+              <CheckCircle2 className="w-6 h-6 text-emerald-500 group-hover:scale-110 transition-transform" />
+            </Link>
+
+            <Link
+              href="/dashboard/payments"
+              className="p-3.5 rounded-xl bg-rose-50/70 border border-rose-200/60 hover:border-rose-400 transition flex items-center justify-between group"
+            >
+              <div>
+                <span className="text-[11px] font-bold text-rose-800 uppercase tracking-wider block">Clients Yet to Pay</span>
+                <div className="text-xl font-black text-rose-900 mt-0.5">
+                  {stats.pendingPayments || 0} Pending
+                </div>
+                <span className="text-[10px] text-rose-700 font-semibold">⚠ Balance Collection Required</span>
+              </div>
+              <AlertTriangle className="w-6 h-6 text-rose-500 group-hover:scale-110 transition-transform" />
+            </Link>
+
+            <Link
+              href="/dashboard/payments"
+              className="p-3.5 rounded-xl bg-amber-50/70 border border-amber-200/60 hover:border-amber-400 transition flex items-center justify-between group"
+            >
+              <div>
+                <span className="text-[11px] font-bold text-amber-800 uppercase tracking-wider block">Private Clients (1:1)</span>
+                <div className="text-xl font-black text-amber-900 mt-0.5">
+                  1:1 Medical Fitness
+                </div>
+                <span className="text-[10px] text-amber-700 font-semibold">Premium Individual Coaching</span>
+              </div>
+              <Sparkles className="w-6 h-6 text-amber-500 group-hover:scale-110 transition-transform" />
+            </Link>
+
+            <Link
+              href="/dashboard/payments"
+              className="p-3.5 rounded-xl bg-purple-50/70 border border-purple-200/60 hover:border-purple-400 transition flex items-center justify-between group"
+            >
+              <div>
+                <span className="text-[11px] font-bold text-purple-800 uppercase tracking-wider block">Semi-Private (1:4)</span>
+                <div className="text-xl font-black text-purple-900 mt-0.5">
+                  1:4 Clinical Rehab
+                </div>
+                <span className="text-[10px] text-purple-700 font-semibold">Small Group Spine & Joint</span>
+              </div>
+              <Layers className="w-6 h-6 text-purple-500 group-hover:scale-110 transition-transform" />
+            </Link>
+          </div>
+        </div>
+
+        {/* ========================================================================= */}
+        {/* 4B. PACKAGES & ENROLLED CLIENTS HUB (PRIVATE, SEMI-PRIVATE, GROUP, ONLINE) */}
+        {/* ========================================================================= */}
+        <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm p-5 space-y-4">
+          <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-3 pb-3 border-b border-slate-100">
+            <div className="flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-xl bg-purple-100 text-purple-600 flex items-center justify-center">
+                <Package className="w-4 h-4" />
+              </div>
+              <div>
+                <h3 className="text-sm font-extrabold text-slate-900">Clinical Packages Hub</h3>
+                <p className="text-xs text-slate-400">
+                  Manage Private, Semi-Private, Group, and Online client packages with respective enrollments
+                </p>
+              </div>
+            </div>
+
+            <Link
+              href="/dashboard/packages"
+              className="px-3.5 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold transition flex items-center gap-1.5 shadow-sm"
+            >
+              <span>Explore All 4 Categories</span>
+              <ArrowRight className="w-3.5 h-3.5" />
+            </Link>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+            <Link
+              href="/dashboard/packages"
+              className="p-4 rounded-xl border border-slate-200/80 bg-slate-50/50 hover:bg-white hover:border-amber-400 transition"
+            >
+              <div className="flex items-center justify-between mb-1.5">
+                <span className="text-xs font-bold text-amber-700 uppercase">1:1 Private</span>
+                <Sparkles className="w-4 h-4 text-amber-500" />
+              </div>
+              <div className="text-sm font-extrabold text-slate-900">Private Packages</div>
+              <p className="text-[11px] text-slate-400 mt-0.5">Individual post-rehab & medical fitness clients</p>
+            </Link>
+
+            <Link
+              href="/dashboard/packages"
+              className="p-4 rounded-xl border border-slate-200/80 bg-slate-50/50 hover:bg-white hover:border-purple-400 transition"
+            >
+              <div className="flex items-center justify-between mb-1.5">
+                <span className="text-xs font-bold text-purple-700 uppercase">1:4 Clinical</span>
+                <Layers className="w-4 h-4 text-purple-500" />
+              </div>
+              <div className="text-sm font-extrabold text-slate-900">Semi-Private</div>
+              <p className="text-[11px] text-slate-400 mt-0.5">Small group spine & joint stability clients</p>
+            </Link>
+
+            <Link
+              href="/dashboard/packages"
+              className="p-4 rounded-xl border border-slate-200/80 bg-slate-50/50 hover:bg-white hover:border-emerald-400 transition"
+            >
+              <div className="flex items-center justify-between mb-1.5">
+                <span className="text-xs font-bold text-emerald-700 uppercase">Group</span>
+                <Users className="w-4 h-4 text-emerald-500" />
+              </div>
+              <div className="text-sm font-extrabold text-slate-900">Group Sessions</div>
+              <p className="text-[11px] text-slate-400 mt-0.5">Mobility, functional conditioning & movement</p>
+            </Link>
+
+            <Link
+              href="/dashboard/packages"
+              className="p-4 rounded-xl border border-slate-200/80 bg-slate-50/50 hover:bg-white hover:border-blue-400 transition"
+            >
+              <div className="flex items-center justify-between mb-1.5">
+                <span className="text-xs font-bold text-blue-700 uppercase">Online / Virtual</span>
+                <Award className="w-4 h-4 text-blue-500" />
+              </div>
+              <div className="text-sm font-extrabold text-slate-900">Online Clients</div>
+              <p className="text-[11px] text-slate-400 mt-0.5">Remote tele-rehab & corrective exercise clients</p>
+            </Link>
+          </div>
         </div>
 
         {/* 5. NEW CLIENTS SECTION (TODAY'S REGISTRATIONS) */}

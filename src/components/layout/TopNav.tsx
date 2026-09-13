@@ -155,67 +155,41 @@ export function TopNav() {
             Clients
           </Link>
 
-          {/* BILLING & PAYMENTS dropdown */}
-          <div className="relative">
-            <button
-              onClick={() => setActiveDropdown(activeDropdown === 'billing' ? null : 'billing')}
-              className={`px-3 py-1.5 rounded text-xs font-bold transition-colors whitespace-nowrap uppercase tracking-wider flex items-center gap-1 ${
-                isTabActive('BILLING')
-                  ? 'bg-emerald-500 text-white shadow-sm'
-                  : 'text-slate-700 hover:bg-slate-100 hover:text-slate-900'
-              }`}
-            >
-              Billing & Payments
-              <ChevronDown className="w-3.5 h-3.5 opacity-80" />
-            </button>
+          {/* BILLING & PAYMENTS */}
+          <Link
+            href="/dashboard/payments"
+            className={`px-3 py-1.5 rounded text-xs font-bold transition-colors whitespace-nowrap uppercase tracking-wider ${
+              isTabActive('BILLING')
+                ? 'bg-emerald-500 text-white shadow-sm'
+                : 'text-slate-700 hover:bg-slate-100 hover:text-slate-900'
+            }`}
+          >
+            Billing & Payments
+          </Link>
 
-            {activeDropdown === 'billing' && (
-              <div className="absolute left-0 mt-1 w-56 bg-white rounded-lg shadow-xl border border-slate-200 py-1.5 z-50 animate-in fade-in-50 zoom-in-95">
-                {billingItems.map((item, idx) => (
-                  <Link
-                    key={idx}
-                    href={item.href}
-                    onClick={() => setActiveDropdown(null)}
-                    className="flex items-center gap-2.5 px-3.5 py-2 text-xs font-medium text-slate-700 hover:bg-emerald-50 hover:text-emerald-700 transition-colors"
-                  >
-                    {item.icon && <item.icon className="w-4 h-4 text-slate-400" />}
-                    <span>{item.label}</span>
-                  </Link>
-                ))}
-              </div>
-            )}
-          </div>
+          {/* PACKAGES */}
+          <Link
+            href="/dashboard/packages"
+            className={`px-3 py-1.5 rounded text-xs font-bold transition-colors whitespace-nowrap uppercase tracking-wider ${
+              isTabActive('PACKAGES')
+                ? 'bg-emerald-500 text-white shadow-sm'
+                : 'text-slate-700 hover:bg-slate-100 hover:text-slate-900'
+            }`}
+          >
+            Packages
+          </Link>
 
-          {/* PACKAGES dropdown */}
-          <div className="relative">
-            <button
-              onClick={() => setActiveDropdown(activeDropdown === 'packages' ? null : 'packages')}
-              className={`px-3 py-1.5 rounded text-xs font-bold transition-colors whitespace-nowrap uppercase tracking-wider flex items-center gap-1 ${
-                isTabActive('PACKAGES')
-                  ? 'bg-emerald-500 text-white shadow-sm'
-                  : 'text-slate-700 hover:bg-slate-100 hover:text-slate-900'
-              }`}
-            >
-              Packages
-              <ChevronDown className="w-3.5 h-3.5 opacity-80" />
-            </button>
-
-            {activeDropdown === 'packages' && (
-              <div className="absolute left-0 mt-1 w-56 bg-white rounded-lg shadow-xl border border-slate-200 py-1.5 z-50 animate-in fade-in-50 zoom-in-95">
-                {packageItems.map((item, idx) => (
-                  <Link
-                    key={idx}
-                    href={item.href}
-                    onClick={() => setActiveDropdown(null)}
-                    className="flex items-center gap-2.5 px-3.5 py-2 text-xs font-medium text-slate-700 hover:bg-emerald-50 hover:text-emerald-700 transition-colors"
-                  >
-                    {item.icon && <item.icon className="w-4 h-4 text-slate-400" />}
-                    <span>{item.label}</span>
-                  </Link>
-                ))}
-              </div>
-            )}
-          </div>
+          {/* WEEKDAY SESSIONS & SCHEDULE */}
+          <Link
+            href="/dashboard/bookings"
+            className={`px-3 py-1.5 rounded text-xs font-bold transition-colors whitespace-nowrap uppercase tracking-wider ${
+              pathname.startsWith('/dashboard/bookings') || pathname.startsWith('/dashboard/schedules')
+                ? 'bg-emerald-500 text-white shadow-sm'
+                : 'text-slate-700 hover:bg-slate-100 hover:text-slate-900'
+            }`}
+          >
+            Sessions & Schedule
+          </Link>
 
           {/* ATTENDANCE */}
           <Link
@@ -229,73 +203,7 @@ export function TopNav() {
             Attendance
           </Link>
 
-          {/* REPORTS dropdown (Hidden for RECEPTIONIST) */}
-          {role !== 'RECEPTIONIST' && (
-            <div className="relative">
-              <button
-                onClick={() => setActiveDropdown(activeDropdown === 'reports' ? null : 'reports')}
-                className={`px-3 py-1.5 rounded text-xs font-bold transition-colors whitespace-nowrap uppercase tracking-wider flex items-center gap-1 ${
-                  isTabActive('REPORTS')
-                    ? 'bg-emerald-500 text-white shadow-sm'
-                    : 'text-slate-700 hover:bg-slate-100 hover:text-slate-900'
-                }`}
-              >
-                Reports
-                <ChevronDown className="w-3.5 h-3.5 opacity-80" />
-              </button>
-
-              {activeDropdown === 'reports' && (
-                <div className="absolute left-0 mt-1 w-56 bg-white rounded-lg shadow-xl border border-slate-200 py-1.5 z-50 animate-in fade-in-50 zoom-in-95">
-                  {reportItems.map((item, idx) => (
-                    <Link
-                      key={idx}
-                      href={item.href}
-                      onClick={() => setActiveDropdown(null)}
-                      className="flex items-center gap-2.5 px-3.5 py-2 text-xs font-medium text-slate-700 hover:bg-emerald-50 hover:text-emerald-700 transition-colors"
-                    >
-                      {item.icon && <item.icon className="w-4 h-4 text-slate-400" />}
-                      <span>{item.label}</span>
-                    </Link>
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* MANAGE & SETTINGS dropdown */}
-          <div className="relative">
-            <button
-              onClick={() => setActiveDropdown(activeDropdown === 'manage' ? null : 'manage')}
-              className={`px-3 py-1.5 rounded text-xs font-bold transition-colors whitespace-nowrap uppercase tracking-wider flex items-center gap-1 ${
-                isTabActive('MANAGE')
-                  ? 'bg-emerald-500 text-white shadow-sm'
-                  : 'text-slate-700 hover:bg-slate-100 hover:text-slate-900'
-              }`}
-            >
-              Manage & Settings
-              <ChevronDown className="w-3.5 h-3.5 opacity-80" />
-            </button>
-
-            {activeDropdown === 'manage' && (
-              <div className="absolute left-0 mt-1 w-64 bg-white rounded-lg shadow-xl border border-slate-200 py-1.5 z-50 max-h-[75vh] overflow-y-auto animate-in fade-in-50 zoom-in-95">
-                {manageItems
-                  .filter((item) => !item.roleRestriction?.includes(role))
-                  .map((item, idx) => (
-                    <Link
-                      key={idx}
-                      href={item.href}
-                      onClick={() => setActiveDropdown(null)}
-                      className="flex items-center gap-2.5 px-3.5 py-2 text-xs font-medium text-slate-700 hover:bg-emerald-50 hover:text-emerald-700 transition-colors"
-                    >
-                      {item.icon && <item.icon className="w-4 h-4 text-slate-400" />}
-                      <span>{item.label}</span>
-                    </Link>
-                  ))}
-              </div>
-            )}
-          </div>
-
-          {/* FORMS */}
+          {/* CLINICAL FORMS */}
           <Link
             href="/dashboard/assessments"
             className={`px-3 py-1.5 rounded text-xs font-bold transition-colors whitespace-nowrap uppercase tracking-wider ${
@@ -304,8 +212,22 @@ export function TopNav() {
                 : 'text-slate-700 hover:bg-slate-100 hover:text-slate-900'
             }`}
           >
-            Forms
+            Clinical Forms
           </Link>
+
+          {/* REPORTS (Owner/Manager only) */}
+          {role !== 'RECEPTIONIST' && (
+            <Link
+              href="/dashboard/reports"
+              className={`px-3 py-1.5 rounded text-xs font-bold transition-colors whitespace-nowrap uppercase tracking-wider ${
+                isTabActive('REPORTS')
+                  ? 'bg-emerald-500 text-white shadow-sm'
+                  : 'text-slate-700 hover:bg-slate-100 hover:text-slate-900'
+              }`}
+            >
+              Reports
+            </Link>
+          )}
         </nav>
 
         {/* Right: User Profile & Status */}

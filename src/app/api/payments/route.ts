@@ -20,20 +20,42 @@ export async function GET(req: NextRequest) {
       where.clientId = clientId;
     }
 
-    const payments = await prisma.payment.findMany({
-      where,
-      include: {
-        client: {
-          select: { id: true, clientId: true, name: true, phone: true },
+    const [payments, clientPackages, allClients] = await Promise.all([
+      prisma.payment.findMany({
+        where,
+        include: {
+          client: {
+            select: { id: true, clientId: true, name: true, phone: true, email: true, status: true },
+          },
+          clientPackage: {
+            select: { id: true, name: true, serviceType: true, totalSessions: true, sessionsRemaining: true },
+          },
         },
-        clientPackage: {
-          select: { id: true, name: true, serviceType: true, totalSessions: true },
+        orderBy: { paymentDate: 'desc' },
+      }),
+      prisma.clientPackage.findMany({
+        where: { status: 'ACTIVE' },
+        include: {
+          client: {
+            select: { id: true, clientId: true, name: true, phone: true, email: true, status: true },
+          },
+          payments: {
+            orderBy: { paymentDate: 'desc' },
+          },
         },
-      },
-      orderBy: { paymentDate: 'desc' },
-    });
+        orderBy: { startDate: 'desc' },
+      }),
+      prisma.client.findMany({
+        select: { id: true, clientId: true, name: true, phone: true, status: true },
+        orderBy: { name: 'asc' },
+      }),
+    ]);
 
-    return NextResponse.json(payments);
+    return NextResponse.json({
+      payments,
+      clientPackages,
+      clients: allClients,
+    });
   } catch (err: any) {
     console.error('Error fetching payments:', err);
     return NextResponse.json({ error: 'Failed to fetch payments' }, { status: 500 });
