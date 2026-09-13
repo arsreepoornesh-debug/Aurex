@@ -1,0 +1,272 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String     @id @default(cuid())
+  name         String
+  email        String     @unique
+  passwordHash String
+  role         String     @default("RECEPTIONIST") // OWNER, MANAGER, RECEPTIONIST
+  phone        String?
+  active       Boolean    @default(true)
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+  
+  // Relations
+  notes        Note[]
+  followUps    FollowUp[]
+  attendances  Attendance[]
+}
+
+model Specialist {
+  id             String       @id @default(cuid())
+  name           String
+  email          String       @unique
+  phone          String?
+  specialization String
+  bio            String?
+  active         Boolean      @default(true)
+  colorCode      String       @default("#10B981") // HEX color for calendar/dashboard
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  // Relations
+  clients        Client[]
+  sessions       Session[]
+  assessments    Assessment[]
+}
+
+model Client {
+  id                   String          @id @default(cuid())
+  clientId             String          @unique // e.g. AUR-2026-0001
+  name                 String
+  phone                String
+  email                String?
+  dob                  DateTime?
+  gender               String?         // Male, Female, Other
+  address              String?
+  emergencyContactName String?
+  emergencyContactPhone String?
+  registrationDate     DateTime        @default(now())
+  referralSource       String          @default("Walk-in") // Instagram, Facebook, WhatsApp, Website, Google, Referral, Walk-in, Other
+  status               String          @default("LEAD") // LEAD, CONSULTATION, ASSESSMENT_BOOKED, ACTIVE, INACTIVE, ON_HOLD, EXPIRED, COMPLETED
+  isDeleted            Boolean         @default(false)
+  deletedAt            DateTime?
+  
+  assignedSpecialistId String?
+  assignedSpecialist   Specialist?     @relation(fields: [assignedSpecialistId], references: [id])
+  
+  createdAt            DateTime        @default(now())
+  updatedAt            DateTime        @updatedAt
+
+  // Relations
+  packages             ClientPackage[]
+  bookings             Booking[]
+  attendances          Attendance[]
+  payments             Payment[]
+  assessments          Assessment[]
+  notes                Note[]
+  followUps            FollowUp[]
+}
+
+model Package {
+  id           String          @id @default(cuid())
+  name         String
+  serviceType  String          @default("SEMI_PRIVATE") // SEMI_PRIVATE, PREMIUM, ASSESSMENT, CONSULTATION
+  sessionCount Int             @default(12)
+  price        Float           @default(0.0)
+  validityDays Int             @default(60)
+  active       Boolean         @default(true)
+  createdAt    DateTime        @default(now())
+  updatedAt    DateTime        @updatedAt
+
+  clientPackages ClientPackage[]
+}
+
+model ClientPackage {
+  id               String      @id @default(cuid())
+  clientId         String
+  client           Client      @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  packageId        String?
+  package          Package?    @relation(fields: [packageId], references: [id])
+  name             String
+  serviceType      String      @default("SEMI_PRIVATE") // SEMI_PRIVATE, PREMIUM
+  totalSessions    Int         @default(12)
+  sessionsUsed     Int         @default(0)
+  sessionsRemaining Int        @default(12)
+  pricePaid        Float       @default(0.0)
+  balanceRemaining Float       @default(0.0)
+  startDate        DateTime    @default(now())
+  expiryDate       DateTime
+  status           String      @default("ACTIVE") // ACTIVE, EXPIRED, COMPLETED, ON_HOLD
+  createdAt        DateTime    @default(now())
+  updatedAt        DateTime    @updatedAt
+
+  bookings         Booking[]
+  payments         Payment[]
+}
+
+model Session {
+  id              String       @id @default(cuid())
+  title           String
+  date            DateTime     // Date of the session
+  startTime       String       // e.g. "08:00"
+  endTime         String       // e.g. "09:00"
+  serviceType     String       @default("SEMI_PRIVATE") // SEMI_PRIVATE (max 4), PREMIUM (max 1), ASSESSMENT (1), CONSULTATION (1)
+  specialistId    String
+  specialist      Specialist   @relation(fields: [specialistId], references: [id])
+  maxCapacity     Int          @default(4)
+  currentCapacity Int          @default(0)
+  status          String       @default("CONFIRMED") // CONFIRMED, CANCELLED, RESCHEDULED, COMPLETED
+  notes           String?
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+
+  bookings        Booking[]
+  attendances     Attendance[]
+}
+
+model Booking {
+  id              String         @id @default(cuid())
+  sessionId       String
+  session         Session        @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  clientId        String
+  client          Client         @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  clientPackageId String?
+  clientPackage   ClientPackage? @relation(fields: [clientPackageId], references: [id])
+  status          String         @default("CONFIRMED") // CONFIRMED, CANCELLED, RESCHEDULED, COMPLETED
+  bookedAt        DateTime       @default(now())
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+
+  attendances     Attendance[]
+
+  @@unique([sessionId, clientId])
+}
+
+model Attendance {
+  id              String    @id @default(cuid())
+  bookingId       String?
+  booking         Booking?  @relation(fields: [bookingId], references: [id], onDelete: SetNull)
+  sessionId       String
+  session         Session   @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  clientId        String
+  client          Client    @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  status          String    @default("PENDING") // PENDING, PRESENT, ABSENT, CANCELLED, RESCHEDULED, NO_SHOW
+  markedAt        DateTime  @default(now())
+  markedByUserId  String?
+  markedByUser    User?     @relation(fields: [markedByUserId], references: [id])
+  notes           String?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+}
+
+model Payment {
+  id               String         @id @default(cuid())
+  clientId         String
+  client           Client         @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  clientPackageId  String?
+  clientPackage    ClientPackage? @relation(fields: [clientPackageId], references: [id])
+  amount           Float
+  balanceRemaining Float          @default(0.0)
+  paymentDate      DateTime       @default(now())
+  paymentMethod    String         @default("UPI") // UPI, BANK_TRANSFER, CARD, CASH
+  invoiceNumber    String         @unique // e.g. INV-AUR-0001
+  status           String         @default("PAID") // PAID, PARTIAL, PENDING, REFUNDED
+  notes            String?
+  isRefund         Boolean        @default(false)
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+}
+
+model Assessment {
+  id                 String     @id @default(cuid())
+  clientId           String
+  client             Client     @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  specialistId       String?
+  specialist         Specialist? @relation(fields: [specialistId], references: [id])
+  type               String     @default("INITIAL") // INITIAL, REASSESSMENT, PROGRESS_REVIEW
+  date               DateTime   @default(now())
+  
+  // Structured Clinical Sections (stored as JSON string)
+  healthScreening    String?    // PAR-Q, medical flags, physician clearance
+  medicalHistory     String?    // Past injuries, spine/joints, surgeries, medications
+  goals              String?    // Rehab, posture, strength, endurance, metabolic
+  baselineMetrics    String?    // Height, weight, BMI, BP, resting HR, body fat %
+  functionalMovement String?    // FMS, mobility tests, posture, core stability
+  cardioStrength     String?    // Submax cardio, 1RM/5RM estimate, grip strength
+  clinicalNotes      String?    // Specialist findings, exercise prescription, precautions
+  
+  createdAt          DateTime   @default(now())
+  updatedAt          DateTime   @updatedAt
+}
+
+model Lead {
+  id                String      @id @default(cuid())
+  name              String
+  phone             String
+  email             String?
+  alternatePhone    String?
+  gender            String?     @default("Male")
+  stage             String      @default("NEW_LEAD") // NEW_LEAD, CONTACTED, CONSULTATION, ASSESSMENT_BOOKED, ASSESSMENT_COMPLETED, PACKAGE_OFFERED, CONVERTED, ACTIVE, RENEWAL, LOST
+  convertibility    String?     @default("Warm") // Hot, Warm, Cold
+  source            String      @default("Instagram") // Instagram, Facebook, WhatsApp, Website, Google, Referral, Walk-in, Other
+  service           String?     @default("AUREX")
+  trialDate         DateTime?
+  scheduleFollowUp  DateTime?
+  attendedBy        String?     @default("Admin")
+  response          String?     // Quick response tag e.g. "Call not picked", "Timing issue"
+  responseNote      String?
+  notes             String?
+  assignedToUserId  String?
+  convertedClientId String?
+  createdAt         DateTime    @default(now())
+  updatedAt         DateTime    @updatedAt
+
+  followUps         FollowUp[]
+}
+
+model FollowUp {
+  id             String    @id @default(cuid())
+  leadId         String?
+  lead           Lead?     @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  clientId       String?
+  client         Client?   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  type           String    @default("CALL") // CALL, WHATSAPP, EMAIL, IN_PERSON
+  notes          String
+  followUpDate   DateTime  @default(now())
+  completed      Boolean   @default(false)
+  loggedByUserId String?
+  loggedByUser   User?     @relation(fields: [loggedByUserId], references: [id])
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+}
+
+model Note {
+  id        String   @id @default(cuid())
+  clientId  String
+  client    Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  content   String
+  category  String   @default("GENERAL") // CLINICAL, BILLING, GENERAL, PROGRESS
+  authorId  String?
+  author    User?    @relation(fields: [authorId], references: [id])
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Expense {
+  id             String    @id @default(cuid())
+  date           DateTime  @default(now())
+  description    String
+  amount         Float     @default(0.0)
+  category       String    @default("OPERATIONAL") // OPERATIONAL, EQUIPMENT, SALARIES, MAINTENANCE, UTILITIES, MARKETING, OTHER
+  loggedByUserId String?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+}
