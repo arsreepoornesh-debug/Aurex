@@ -28,6 +28,7 @@ import {
   ShieldCheck,
   Check,
   X,
+  Trash2,
 } from 'lucide-react';
 import { Header } from '@/components/layout/Header';
 import { formatCurrency, formatDate, formatDateTime } from '@/lib/utils';
@@ -48,7 +49,10 @@ export default function ClientProfilePage() {
   // Modals
   const [showAssignPackageModal, setShowAssignPackageModal] = useState(false);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
   const [masterPackages, setMasterPackages] = useState<any[]>([]);
+
 
   // Package Form
   const [packageForm, setPackageForm] = useState({
@@ -213,6 +217,29 @@ export default function ClientProfilePage() {
     }
   }
 
+  // Delete Client
+  async function handleDeleteClient() {
+    setIsDeleting(true);
+    try {
+      const res = await fetch(`/api/clients/${client.id}`, {
+        method: 'DELETE',
+      });
+      const data = await res.json();
+      if (res.ok) {
+        alert(data.message || 'Client removed successfully');
+        router.push('/dashboard/clients');
+      } else {
+        alert(data.error || 'Failed to delete client');
+        setIsDeleting(false);
+        setShowDeleteModal(false);
+      }
+    } catch (err) {
+      alert('Error deleting client');
+      setIsDeleting(false);
+      setShowDeleteModal(false);
+    }
+  }
+
   if (loading || !client) {
     return (
       <div>
@@ -271,8 +298,18 @@ export default function ClientProfilePage() {
               <FileHeart className="w-4 h-4" />
               <span>+ New Assessment</span>
             </Link>
+
+            <button
+              onClick={() => setShowDeleteModal(true)}
+              className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-red-950/40 hover:bg-red-900/60 text-red-300 hover:text-red-100 text-xs font-bold border border-red-800/50 transition"
+              title="Remove this client"
+            >
+              <Trash2 className="w-4 h-4 text-red-400" />
+              <span>Remove Client</span>
+            </button>
           </div>
         </div>
+
 
         {/* Client Core Header Card */}
         <div className="clinical-card p-6 border-emerald-500/30 bg-gradient-to-r from-[#121B2D] via-[#162137] to-[#111A2C]">
@@ -1043,6 +1080,74 @@ export default function ClientProfilePage() {
           </div>
         </div>
       )}
+
+      {/* Remove Client Confirmation Modal */}
+      {showDeleteModal && (
+        <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-md z-50 flex items-center justify-center p-4">
+          <div className="bg-[#121B2D] border border-red-500/40 rounded-xl max-w-md w-full shadow-2xl overflow-hidden animate-in fade-in zoom-in duration-150">
+            <div className="p-4 bg-red-950/40 border-b border-red-800/40 flex items-center justify-between">
+              <div className="flex items-center gap-2 text-red-400 font-bold text-sm">
+                <AlertTriangle className="w-5 h-5 text-red-500" />
+                <span>Remove Client Record</span>
+              </div>
+              <button
+                onClick={() => setShowDeleteModal(false)}
+                className="text-slate-400 hover:text-white transition"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="p-5 space-y-3">
+              <p className="text-xs text-slate-300 leading-relaxed">
+                Are you sure you want to permanently delete <strong className="text-white font-black">{client.name}</strong> (
+                <code className="text-red-400 font-bold">{client.clientId}</code>)?
+              </p>
+              <div className="p-3 bg-red-950/60 rounded-lg border border-red-900/60 text-[11px] text-red-300 space-y-1">
+                <p className="font-bold text-red-200 flex items-center gap-1">
+                  <AlertTriangle className="w-3.5 h-3.5 shrink-0 text-red-400" />
+                  Irreversible Action:
+                </p>
+                <ul className="list-disc list-inside space-y-0.5 text-red-300/90 pl-1">
+                  <li>All assigned packages & session counts will be removed.</li>
+                  <li>All session bookings & attendance logs will be cleared.</li>
+                  <li>Payment records, invoices, notes, and clinical assessments will be purged.</li>
+                </ul>
+              </div>
+            </div>
+
+            <div className="p-4 bg-[#0E1626] border-t border-[#1F2D44] flex justify-end gap-2">
+              <button
+                type="button"
+                disabled={isDeleting}
+                onClick={() => setShowDeleteModal(false)}
+                className="px-4 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold transition"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={isDeleting}
+                onClick={handleDeleteClient}
+                className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-red-600 hover:bg-red-500 text-white text-xs font-bold shadow-lg transition disabled:opacity-50"
+              >
+                {isDeleting ? (
+                  <>
+                    <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    <span>Removing Client...</span>
+                  </>
+                ) : (
+                  <>
+                    <Trash2 className="w-3.5 h-3.5" />
+                    <span>Confirm Delete Client</span>
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
+

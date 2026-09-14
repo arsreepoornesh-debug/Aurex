@@ -76,7 +76,7 @@ export default function ReportsPage() {
           </div>
           <h2 className="text-xl font-black text-white">RBAC Access Restricted</h2>
           <p className="text-xs text-slate-400">
-            Financial reports, revenue analysis, and utilization analytics are accessible only to Owner and Manager roles.
+            Financial reports, revenue analysis, ledger analytics, and utilization metrics are accessible strictly to the Owner role only.
           </p>
         </div>
       </div>
@@ -87,15 +87,16 @@ export default function ReportsPage() {
     <div>
       <Header
         title="Reports & Financial Analytics"
-        subtitle="Revenue analytics, slot utilization heatmaps, client growth, and acquisition velocity"
+        subtitle="Revenue analytics, slot utilization heatmaps, client growth, and acquisition velocity (Owner Only)"
       />
 
       <div className="p-6 space-y-6 max-w-7xl mx-auto">
         {/* Top Header Actions */}
         <div className="flex items-center justify-between">
           <p className="text-xs text-slate-400">
-            Internal executive management metrics (Owner & Manager Level).
+            Executive financial intelligence & ledger metrics (Owner Only).
           </p>
+
 
           <button
             onClick={exportToCSV}

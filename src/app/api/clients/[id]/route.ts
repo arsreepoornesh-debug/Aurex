@@ -137,22 +137,63 @@ export async function DELETE(
 ) {
   try {
     const session = await getServerSession(authOptions);
-    const userRole = (session?.user as any)?.role;
+    if (!session?.user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
 
-    if (userRole !== 'OWNER') {
+    const userRole = (session?.user as any)?.role;
+    if (userRole !== 'OWNER' && userRole !== 'MANAGER' && userRole !== 'RECEPTIONIST') {
       return NextResponse.json(
-        { error: 'Forbidden: Only Owner can delete client records' },
+        { error: 'Forbidden: Insufficient permissions to remove client records' },
         { status: 403 }
       );
     }
 
-    await prisma.client.delete({
-      where: { id: params.id },
+
+    const client = await prisma.client.findFirst({
+      where: {
+        OR: [{ id: params.id }, { clientId: params.id }],
+      },
+      include: {
+        bookings: {
+          select: { sessionId: true },
+        },
+      },
     });
 
-    return NextResponse.json({ success: true, message: 'Client deleted' });
+    if (!client) {
+      return NextResponse.json({ error: 'Client not found' }, { status: 404 });
+    }
+
+    const affectedSessionIds = Array.from(
+      new Set(client.bookings.map((b) => b.sessionId).filter(Boolean))
+    );
+
+    await prisma.$transaction(async (tx) => {
+      // Cascade delete handles packages, bookings, attendances, payments, assessments, notes, followups
+      await tx.client.delete({
+        where: { id: client.id },
+      });
+
+      // Recalculate current capacity for any affected sessions
+      for (const sessId of affectedSessionIds) {
+        const activeCount = await tx.booking.count({
+          where: { sessionId: sessId, status: 'CONFIRMED' },
+        });
+        await tx.session.update({
+          where: { id: sessId },
+          data: { currentCapacity: activeCount },
+        });
+      }
+    });
+
+    return NextResponse.json({
+      success: true,
+      message: `Client ${client.name} (${client.clientId}) removed successfully`,
+    });
   } catch (err: any) {
     console.error('Error deleting client:', err);
     return NextResponse.json({ error: 'Failed to delete client' }, { status: 500 });
   }
 }
+

@@ -16,10 +16,11 @@ export async function GET(req: NextRequest) {
     const userRole = (sessionAuth.user as any)?.role;
     if (!canViewReports(userRole)) {
       return NextResponse.json(
-        { error: 'Forbidden: Receptionist cannot access reports and financial analytics' },
+        { error: 'Forbidden: Only Owner can access reports and financial analytics' },
         { status: 403 }
       );
     }
+
 
     // 1. Client Metrics
     const totalClients = await prisma.client.count();

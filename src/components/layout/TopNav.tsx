@@ -63,16 +63,16 @@ export function TopNav() {
   ];
 
   const reportItems: DropdownItem[] = [
-    { label: 'Client Reports', href: '/dashboard/reports?tab=clients', icon: Users, roleRestriction: ['RECEPTIONIST'] },
-    { label: 'Attendance Reports', href: '/dashboard/reports?tab=attendance', icon: Calendar, roleRestriction: ['RECEPTIONIST'] },
-    { label: 'Revenue Reports', href: '/dashboard/reports?tab=revenue', icon: DollarSign, roleRestriction: ['RECEPTIONIST'] },
-    { label: 'Lead Reports', href: '/dashboard/reports?tab=leads', icon: FileText, roleRestriction: ['RECEPTIONIST'] },
-    { label: 'Session Utilisation', href: '/dashboard/reports?tab=utilisation', icon: Activity, roleRestriction: ['RECEPTIONIST'] },
+    { label: 'Client Reports', href: '/dashboard/reports?tab=clients', icon: Users, roleRestriction: ['RECEPTIONIST', 'MANAGER'] },
+    { label: 'Attendance Reports', href: '/dashboard/reports?tab=attendance', icon: Calendar, roleRestriction: ['RECEPTIONIST', 'MANAGER'] },
+    { label: 'Revenue Reports', href: '/dashboard/reports?tab=revenue', icon: DollarSign, roleRestriction: ['RECEPTIONIST', 'MANAGER'] },
+    { label: 'Lead Reports', href: '/dashboard/reports?tab=leads', icon: FileText, roleRestriction: ['RECEPTIONIST', 'MANAGER'] },
+    { label: 'Session Utilisation', href: '/dashboard/reports?tab=utilisation', icon: Activity, roleRestriction: ['RECEPTIONIST', 'MANAGER'] },
   ];
 
   const manageItems: DropdownItem[] = [
     { label: 'Mark Attendance', href: '/dashboard/attendance', icon: Calendar },
-    { label: 'Expenses', href: '/dashboard/expenses', icon: DollarSign, roleRestriction: ['RECEPTIONIST'] },
+    { label: 'Expenses', href: '/dashboard/expenses', icon: DollarSign, roleRestriction: ['RECEPTIONIST', 'MANAGER'] },
     { label: 'Semi-Private Schedule', href: '/dashboard/schedules/semi-private', icon: Calendar },
     { label: 'Premium Schedule', href: '/dashboard/schedules/premium', icon: Sparkles },
     { label: 'Semi-Private Packages (Catalog)', href: '/dashboard/packages/semi-private', icon: Package },
@@ -215,8 +215,8 @@ export function TopNav() {
             Clinical Forms
           </Link>
 
-          {/* REPORTS (Owner/Manager only) */}
-          {role !== 'RECEPTIONIST' && (
+          {/* REPORTS (Owner only) */}
+          {role === 'OWNER' && (
             <Link
               href="/dashboard/reports"
               className={`px-3 py-1.5 rounded text-xs font-bold transition-colors whitespace-nowrap uppercase tracking-wider ${
@@ -229,6 +229,7 @@ export function TopNav() {
             </Link>
           )}
         </nav>
+
 
         {/* Right: User Profile & Status */}
         <div className="flex items-center gap-3 shrink-0 ml-3">
