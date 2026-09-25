@@ -9,7 +9,6 @@ import {
   Activity, 
   User, 
   LogOut, 
-  ShieldCheck, 
   Building2,
   Calendar,
   CreditCard,
@@ -20,7 +19,9 @@ import {
   Package,
   Layers,
   Sparkles,
-  ClipboardList
+  ClipboardList,
+  ShieldAlert,
+  History
 } from 'lucide-react';
 
 interface DropdownItem {
@@ -52,9 +53,10 @@ export function TopNav() {
   }, []);
 
   const billingItems: DropdownItem[] = [
-    { label: 'Semi-Private Session Bill', href: '/dashboard/payments?service=SEMI_PRIVATE', icon: CreditCard },
-    { label: 'Premium Session Bill', href: '/dashboard/payments?service=PREMIUM', icon: DollarSign },
-    { label: 'Deleted / Refunded Bills', href: '/dashboard/payments?status=REFUNDED', icon: Layers },
+    { label: 'Semi-Private Session Bills', href: '/dashboard/payments?service=SEMI_PRIVATE', icon: CreditCard },
+    { label: 'Premium Session Bills', href: '/dashboard/payments?service=PREMIUM', icon: DollarSign },
+    { label: 'Expenses', href: '/dashboard/expenses', icon: Layers },
+    { label: 'Deleted Bills', href: '/dashboard/payments?status=REFUNDED', icon: ShieldAlert },
   ];
 
   const packageItems: DropdownItem[] = [
@@ -63,39 +65,41 @@ export function TopNav() {
   ];
 
   const reportItems: DropdownItem[] = [
-    { label: 'Client Reports', href: '/dashboard/reports?tab=clients', icon: Users, roleRestriction: ['RECEPTIONIST', 'MANAGER'] },
-    { label: 'Attendance Reports', href: '/dashboard/reports?tab=attendance', icon: Calendar, roleRestriction: ['RECEPTIONIST', 'MANAGER'] },
-    { label: 'Revenue Reports', href: '/dashboard/reports?tab=revenue', icon: DollarSign, roleRestriction: ['RECEPTIONIST', 'MANAGER'] },
-    { label: 'Lead Reports', href: '/dashboard/reports?tab=leads', icon: FileText, roleRestriction: ['RECEPTIONIST', 'MANAGER'] },
-    { label: 'Session Utilisation', href: '/dashboard/reports?tab=utilisation', icon: Activity, roleRestriction: ['RECEPTIONIST', 'MANAGER'] },
+    { label: 'Client Reports', href: '/dashboard/reports?tab=clients', icon: Users },
+    { label: 'Attendance Reports', href: '/dashboard/reports?tab=attendance', icon: Calendar },
+    { label: 'Revenue & Financial', href: '/dashboard/reports?tab=revenue', icon: DollarSign },
+    { label: 'Lead Analytics', href: '/dashboard/reports?tab=leads', icon: FileText },
+    { label: 'Session Utilisation', href: '/dashboard/reports?tab=utilisation', icon: Activity },
   ];
 
   const manageItems: DropdownItem[] = [
     { label: 'Mark Attendance', href: '/dashboard/attendance', icon: Calendar },
-    { label: 'Expenses', href: '/dashboard/expenses', icon: DollarSign, roleRestriction: ['RECEPTIONIST', 'MANAGER'] },
     { label: 'Semi-Private Schedule', href: '/dashboard/schedules/semi-private', icon: Calendar },
     { label: 'Premium Schedule', href: '/dashboard/schedules/premium', icon: Sparkles },
     { label: 'Semi-Private Packages (Catalog)', href: '/dashboard/packages/semi-private', icon: Package },
     { label: 'Premium Packages (Catalog)', href: '/dashboard/packages/premium', icon: Sparkles },
-    { label: 'Specialists', href: '/dashboard/specialists', icon: Users, roleRestriction: ['RECEPTIONIST'] },
-    { label: 'Staff / Employee', href: '/dashboard/staff', icon: Users, roleRestriction: ['RECEPTIONIST'] },
+    { label: 'Specialists', href: '/dashboard/specialists', icon: Users },
+    { label: 'Staff / Employees', href: '/dashboard/staff', icon: Users },
     { label: 'Deleted Client List', href: '/dashboard/clients?filter=deleted', icon: Users },
     { label: 'Announcements', href: '/dashboard/announcements', icon: FileText },
-    { label: 'Software Settings', href: '/dashboard/settings', icon: Settings, roleRestriction: ['RECEPTIONIST', 'MANAGER'] },
+    { label: 'Software Settings', href: '/dashboard/settings', icon: Settings },
+    { label: 'Audit Logs', href: '/dashboard/settings?tab=audit', icon: History },
   ];
 
   const isTabActive = (item: string) => {
     if (item === 'DASHBOARD' && pathname === '/dashboard') return true;
     if (item === 'INQUIRY' && pathname.startsWith('/dashboard/crm')) return true;
     if (item === 'CLIENTS' && pathname.startsWith('/dashboard/clients')) return true;
-    if (item === 'BILLING' && pathname.startsWith('/dashboard/payments')) return true;
+    if (item === 'BILLING' && (pathname.startsWith('/dashboard/payments') || pathname.startsWith('/dashboard/expenses'))) return true;
     if (item === 'PACKAGES' && pathname.startsWith('/dashboard/packages')) return true;
     if (item === 'ATTENDANCE' && pathname.startsWith('/dashboard/attendance')) return true;
     if (item === 'REPORTS' && pathname.startsWith('/dashboard/reports')) return true;
-    if (item === 'MANAGE' && (pathname.startsWith('/dashboard/schedules') || pathname.startsWith('/dashboard/expenses') || pathname.startsWith('/dashboard/staff') || pathname.startsWith('/dashboard/settings') || pathname.startsWith('/dashboard/announcements'))) return true;
+    if (item === 'MANAGE' && (pathname.startsWith('/dashboard/schedules') || pathname.startsWith('/dashboard/specialists') || pathname.startsWith('/dashboard/staff') || pathname.startsWith('/dashboard/settings') || pathname.startsWith('/dashboard/announcements'))) return true;
     if (item === 'FORMS' && pathname.startsWith('/dashboard/assessments')) return true;
     return false;
   };
+
+  const isOwnerOrManager = role === 'OWNER' || role === 'MANAGER';
 
   return (
     <header ref={navRef} className="sticky top-0 z-40 bg-white border-b border-slate-200 shadow-sm select-none">
@@ -155,41 +159,65 @@ export function TopNav() {
             Clients
           </Link>
 
-          {/* BILLING & PAYMENTS */}
-          <Link
-            href="/dashboard/payments"
-            className={`px-3 py-1.5 rounded text-xs font-bold transition-colors whitespace-nowrap uppercase tracking-wider ${
-              isTabActive('BILLING')
-                ? 'bg-emerald-500 text-white shadow-sm'
-                : 'text-slate-700 hover:bg-slate-100 hover:text-slate-900'
-            }`}
-          >
-            Billing & Payments
-          </Link>
+          {/* BILLING & PAYMENTS ▼ */}
+          <div className="relative">
+            <button
+              onClick={() => setActiveDropdown(activeDropdown === 'BILLING' ? null : 'BILLING')}
+              className={`flex items-center gap-1 px-3 py-1.5 rounded text-xs font-bold transition-colors whitespace-nowrap uppercase tracking-wider ${
+                isTabActive('BILLING') || activeDropdown === 'BILLING'
+                  ? 'bg-emerald-500 text-white shadow-sm'
+                  : 'text-slate-700 hover:bg-slate-100 hover:text-slate-900'
+              }`}
+            >
+              Billing & Payments
+              <ChevronDown className="w-3.5 h-3.5 ml-0.5" />
+            </button>
+            {activeDropdown === 'BILLING' && (
+              <div className="absolute left-0 mt-1.5 w-56 bg-white rounded-lg shadow-xl border border-slate-200 py-1 z-50 animate-in fade-in-50 zoom-in-95">
+                {billingItems.map((item, idx) => (
+                  <Link
+                    key={idx}
+                    href={item.href}
+                    onClick={() => setActiveDropdown(null)}
+                    className="flex items-center gap-2.5 px-3.5 py-2 text-xs text-slate-700 hover:bg-slate-50 font-medium transition-colors"
+                  >
+                    {item.icon && <item.icon className="w-4 h-4 text-slate-400" />}
+                    {item.label}
+                  </Link>
+                ))}
+              </div>
+            )}
+          </div>
 
-          {/* PACKAGES */}
-          <Link
-            href="/dashboard/packages"
-            className={`px-3 py-1.5 rounded text-xs font-bold transition-colors whitespace-nowrap uppercase tracking-wider ${
-              isTabActive('PACKAGES')
-                ? 'bg-emerald-500 text-white shadow-sm'
-                : 'text-slate-700 hover:bg-slate-100 hover:text-slate-900'
-            }`}
-          >
-            Packages
-          </Link>
-
-          {/* WEEKDAY SESSIONS & SCHEDULE */}
-          <Link
-            href="/dashboard/bookings"
-            className={`px-3 py-1.5 rounded text-xs font-bold transition-colors whitespace-nowrap uppercase tracking-wider ${
-              pathname.startsWith('/dashboard/bookings') || pathname.startsWith('/dashboard/schedules')
-                ? 'bg-emerald-500 text-white shadow-sm'
-                : 'text-slate-700 hover:bg-slate-100 hover:text-slate-900'
-            }`}
-          >
-            Sessions & Schedule
-          </Link>
+          {/* PACKAGES ▼ */}
+          <div className="relative">
+            <button
+              onClick={() => setActiveDropdown(activeDropdown === 'PACKAGES' ? null : 'PACKAGES')}
+              className={`flex items-center gap-1 px-3 py-1.5 rounded text-xs font-bold transition-colors whitespace-nowrap uppercase tracking-wider ${
+                isTabActive('PACKAGES') || activeDropdown === 'PACKAGES'
+                  ? 'bg-emerald-500 text-white shadow-sm'
+                  : 'text-slate-700 hover:bg-slate-100 hover:text-slate-900'
+              }`}
+            >
+              Packages
+              <ChevronDown className="w-3.5 h-3.5 ml-0.5" />
+            </button>
+            {activeDropdown === 'PACKAGES' && (
+              <div className="absolute left-0 mt-1.5 w-52 bg-white rounded-lg shadow-xl border border-slate-200 py-1 z-50 animate-in fade-in-50 zoom-in-95">
+                {packageItems.map((item, idx) => (
+                  <Link
+                    key={idx}
+                    href={item.href}
+                    onClick={() => setActiveDropdown(null)}
+                    className="flex items-center gap-2.5 px-3.5 py-2 text-xs text-slate-700 hover:bg-slate-50 font-medium transition-colors"
+                  >
+                    {item.icon && <item.icon className="w-4 h-4 text-slate-400" />}
+                    {item.label}
+                  </Link>
+                ))}
+              </div>
+            )}
+          </div>
 
           {/* ATTENDANCE */}
           <Link
@@ -203,7 +231,71 @@ export function TopNav() {
             Attendance
           </Link>
 
-          {/* CLINICAL FORMS */}
+          {/* REPORTS ▼ (Owner + Manager only) */}
+          {isOwnerOrManager && (
+            <div className="relative">
+              <button
+                onClick={() => setActiveDropdown(activeDropdown === 'REPORTS' ? null : 'REPORTS')}
+                className={`flex items-center gap-1 px-3 py-1.5 rounded text-xs font-bold transition-colors whitespace-nowrap uppercase tracking-wider ${
+                  isTabActive('REPORTS') || activeDropdown === 'REPORTS'
+                    ? 'bg-emerald-500 text-white shadow-sm'
+                    : 'text-slate-700 hover:bg-slate-100 hover:text-slate-900'
+                }`}
+              >
+                Reports
+                <ChevronDown className="w-3.5 h-3.5 ml-0.5" />
+              </button>
+              {activeDropdown === 'REPORTS' && (
+                <div className="absolute left-0 mt-1.5 w-52 bg-white rounded-lg shadow-xl border border-slate-200 py-1 z-50 animate-in fade-in-50 zoom-in-95">
+                  {reportItems.map((item, idx) => (
+                    <Link
+                      key={idx}
+                      href={item.href}
+                      onClick={() => setActiveDropdown(null)}
+                      className="flex items-center gap-2.5 px-3.5 py-2 text-xs text-slate-700 hover:bg-slate-50 font-medium transition-colors"
+                    >
+                      {item.icon && <item.icon className="w-4 h-4 text-slate-400" />}
+                      {item.label}
+                    </Link>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* MANAGE & SETTINGS ▼ (Owner + Manager only) */}
+          {isOwnerOrManager && (
+            <div className="relative">
+              <button
+                onClick={() => setActiveDropdown(activeDropdown === 'MANAGE' ? null : 'MANAGE')}
+                className={`flex items-center gap-1 px-3 py-1.5 rounded text-xs font-bold transition-colors whitespace-nowrap uppercase tracking-wider ${
+                  isTabActive('MANAGE') || activeDropdown === 'MANAGE'
+                    ? 'bg-emerald-500 text-white shadow-sm'
+                    : 'text-slate-700 hover:bg-slate-100 hover:text-slate-900'
+                }`}
+              >
+                Manage & Settings
+                <ChevronDown className="w-3.5 h-3.5 ml-0.5" />
+              </button>
+              {activeDropdown === 'MANAGE' && (
+                <div className="absolute right-0 mt-1.5 w-60 bg-white rounded-lg shadow-xl border border-slate-200 py-1 z-50 max-h-80 overflow-y-auto animate-in fade-in-50 zoom-in-95">
+                  {manageItems.map((item, idx) => (
+                    <Link
+                      key={idx}
+                      href={item.href}
+                      onClick={() => setActiveDropdown(null)}
+                      className="flex items-center gap-2.5 px-3.5 py-2 text-xs text-slate-700 hover:bg-slate-50 font-medium transition-colors"
+                    >
+                      {item.icon && <item.icon className="w-4 h-4 text-slate-400" />}
+                      {item.label}
+                    </Link>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* FORMS */}
           <Link
             href="/dashboard/assessments"
             className={`px-3 py-1.5 rounded text-xs font-bold transition-colors whitespace-nowrap uppercase tracking-wider ${
@@ -212,26 +304,11 @@ export function TopNav() {
                 : 'text-slate-700 hover:bg-slate-100 hover:text-slate-900'
             }`}
           >
-            Clinical Forms
+            Forms
           </Link>
-
-          {/* REPORTS (Owner only) */}
-          {role === 'OWNER' && (
-            <Link
-              href="/dashboard/reports"
-              className={`px-3 py-1.5 rounded text-xs font-bold transition-colors whitespace-nowrap uppercase tracking-wider ${
-                isTabActive('REPORTS')
-                  ? 'bg-emerald-500 text-white shadow-sm'
-                  : 'text-slate-700 hover:bg-slate-100 hover:text-slate-900'
-              }`}
-            >
-              Reports
-            </Link>
-          )}
         </nav>
 
-
-        {/* Right: User Profile & Status */}
+        {/* Right: User Profile & Role Switcher */}
         <div className="flex items-center gap-3 shrink-0 ml-3">
           <div className="hidden lg:flex flex-col items-end">
             <span className="text-xs font-bold text-slate-800">
@@ -255,7 +332,7 @@ export function TopNav() {
             </button>
 
             {userMenuOpen && (
-              <div className="absolute right-0 mt-2 w-52 bg-white rounded-lg shadow-xl border border-slate-200 py-1.5 z-50 animate-in fade-in-50 zoom-in-95">
+              <div className="absolute right-0 mt-2 w-56 bg-white rounded-lg shadow-xl border border-slate-200 py-1.5 z-50 animate-in fade-in-50 zoom-in-95">
                 <div className="px-3.5 py-2 border-b border-slate-100 mb-1">
                   <div className="font-bold text-xs text-slate-900">{session?.user?.name || 'AUREX Staff'}</div>
                   <div className="text-[11px] text-slate-500 truncate">{session?.user?.email || 'admin@aurex.com'}</div>

@@ -5,6 +5,61 @@ import { authOptions } from '@/lib/auth';
 import { sendBookingConfirmationEmail } from '@/lib/notifications';
 import { formatDate } from '@/lib/utils';
 
+export async function GET(req: NextRequest) {
+  try {
+    const sessionAuth = await getServerSession(authOptions);
+    if (!sessionAuth?.user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const { searchParams } = new URL(req.url);
+    const dateStr = searchParams.get('date');
+    const specialistId = searchParams.get('specialistId');
+
+    const where: any = {};
+    if (specialistId && specialistId !== 'ALL') {
+      where.specialistId = specialistId;
+    }
+
+    if (dateStr) {
+      const targetDate = new Date(dateStr);
+      const startOfDay = new Date(targetDate.setHours(0, 0, 0, 0));
+      const endOfDay = new Date(targetDate.setHours(23, 59, 59, 999));
+      where.date = {
+        gte: startOfDay,
+        lte: endOfDay,
+      };
+    }
+
+    const sessions = await prisma.session.findMany({
+      where,
+      include: {
+        specialist: true,
+        bookings: {
+          where: { status: 'CONFIRMED' },
+          include: {
+            client: true,
+            clientPackage: true,
+          },
+        },
+        attendances: {
+          include: {
+            client: true,
+          },
+        },
+      },
+      orderBy: {
+        startTime: 'asc',
+      },
+    });
+
+    return NextResponse.json(sessions);
+  } catch (err: any) {
+    console.error('Error fetching bookings:', err);
+    return NextResponse.json({ error: 'Failed to fetch bookings' }, { status: 500 });
+  }
+}
+
 export async function POST(req: NextRequest) {
   try {
     const sessionAuth = await getServerSession(authOptions);
@@ -56,7 +111,7 @@ export async function POST(req: NextRequest) {
       const currentConfirmedCount = targetSession.bookings.length;
       if (currentConfirmedCount >= targetSession.maxCapacity) {
         throw new Error(
-          `CAPACITY_FULL: Session is at full capacity (${targetSession.maxCapacity}/${targetSession.maxCapacity} clients). Cannot add more clients.`
+          `CAPACITY_FULL: This slot is full (${targetSession.maxCapacity}/${targetSession.maxCapacity})`
         );
       }
 
@@ -81,6 +136,7 @@ export async function POST(req: NextRequest) {
           clientId,
           clientPackageId: pkgIdToUse,
           status: 'CONFIRMED',
+          bookedByUserId: (sessionAuth.user as any).id || null,
         },
         include: {
           client: true,

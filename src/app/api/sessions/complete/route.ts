@@ -17,12 +17,15 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Session ID is required' }, { status: 400 });
     }
 
+    const currentUserId = (sessionAuth.user as any).id;
+
     // Execute atomic completion transaction
     const completionResult = await prisma.$transaction(async (tx) => {
       // 1. Fetch Session with bookings and attendances
       const session = await tx.session.findUnique({
         where: { id: sessionId },
         include: {
+          specialist: true,
           bookings: {
             where: { status: 'CONFIRMED' },
             include: {
@@ -62,7 +65,7 @@ export async function POST(req: NextRequest) {
             update: {
               status: 'PRESENT',
               markedAt: new Date(),
-              markedByUserId: (sessionAuth.user as any).id || null,
+              markedByUserId: currentUserId || null,
             },
             create: {
               sessionId,
@@ -70,7 +73,7 @@ export async function POST(req: NextRequest) {
               bookingId: booking.id,
               status: 'PRESENT',
               markedAt: new Date(),
-              markedByUserId: (sessionAuth.user as any).id || null,
+              markedByUserId: currentUserId || null,
             },
           });
         }
@@ -115,9 +118,35 @@ export async function POST(req: NextRequest) {
               sessionsUsed: updatedPkg.sessionsUsed,
               status: updatedPkg.status,
             });
+
+            // Create notification for client
+            await tx.notification.create({
+              data: {
+                clientId: booking.clientId,
+                type: 'SESSION_COMPLETED',
+                message: `Clinical Session on ${session.startTime} with ${session.specialist.name} completed. Sessions remaining: ${updatedPkg.sessionsRemaining}.`,
+                status: 'SENT',
+                channel: 'EMAIL',
+              },
+            });
           }
         }
       }
+
+      // Write Audit Log
+      await tx.auditLog.create({
+        data: {
+          userId: currentUserId || null,
+          action: 'COMPLETE_SESSION',
+          entity: 'Session',
+          entityId: session.id,
+          details: JSON.stringify({
+            title: session.title,
+            time: `${session.startTime}-${session.endTime}`,
+            deductions: updatedPackages,
+          }),
+        },
+      });
 
       return {
         sessionId,

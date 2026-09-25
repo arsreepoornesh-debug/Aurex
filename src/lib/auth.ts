@@ -38,7 +38,9 @@ export const authOptions: NextAuthOptions = {
           name: user.name,
           email: user.email,
           role: user.role,
-        };
+          specialistId: user.specialistId,
+          clientId: user.clientId,
+        } as any;
       },
     }),
   ],
@@ -47,6 +49,8 @@ export const authOptions: NextAuthOptions = {
       if (user) {
         token.id = user.id;
         token.role = (user as any).role;
+        token.specialistId = (user as any).specialistId;
+        token.clientId = (user as any).clientId;
       }
       return token;
     },
@@ -54,6 +58,8 @@ export const authOptions: NextAuthOptions = {
       if (session.user) {
         (session.user as any).id = token.id as string;
         (session.user as any).role = token.role as string;
+        (session.user as any).specialistId = token.specialistId as string | undefined;
+        (session.user as any).clientId = token.clientId as string | undefined;
       }
       return session;
     },

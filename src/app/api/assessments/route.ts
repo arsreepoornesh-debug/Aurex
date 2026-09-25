@@ -12,19 +12,23 @@ export async function GET(req: NextRequest) {
 
     const { searchParams } = new URL(req.url);
     const clientId = searchParams.get('clientId');
+    const type = searchParams.get('type');
 
     const where: any = {};
     if (clientId) {
       where.clientId = clientId;
     }
+    if (type && type !== 'ALL') {
+      where.type = type;
+    }
 
     const assessments = await prisma.assessment.findMany({
       where,
       include: {
-        client: { select: { id: true, clientId: true, name: true, phone: true } },
-        specialist: { select: { id: true, name: true, specialization: true } },
+        client: { select: { id: true, clientId: true, name: true, phone: true, gender: true, dob: true } },
+        specialist: { select: { id: true, name: true, specialization: true, colorCode: true } },
       },
-      orderBy: { date: 'desc' },
+      orderBy: { assessmentDate: 'desc' },
     });
 
     return NextResponse.json(assessments);
@@ -46,12 +50,14 @@ export async function POST(req: NextRequest) {
       clientId,
       specialistId,
       type,
+      assessmentDate,
       healthScreening,
       medicalHistory,
       goals,
       baselineMetrics,
       functionalMovement,
-      cardioStrength,
+      strengthAssessment,
+      cardiovascularData,
       clinicalNotes,
     } = body;
 
@@ -64,14 +70,15 @@ export async function POST(req: NextRequest) {
         clientId,
         specialistId: specialistId || null,
         type: type || 'INITIAL',
-        date: new Date(),
+        assessmentDate: assessmentDate ? new Date(assessmentDate) : new Date(),
         healthScreening: typeof healthScreening === 'object' ? JSON.stringify(healthScreening) : healthScreening,
         medicalHistory: typeof medicalHistory === 'object' ? JSON.stringify(medicalHistory) : medicalHistory,
-        goals: typeof goals === 'object' ? JSON.stringify(goals) : goals,
+        goals: typeof goals === 'object' ? JSON.stringify(goals) : (goals || null),
         baselineMetrics: typeof baselineMetrics === 'object' ? JSON.stringify(baselineMetrics) : baselineMetrics,
         functionalMovement: typeof functionalMovement === 'object' ? JSON.stringify(functionalMovement) : functionalMovement,
-        cardioStrength: typeof cardioStrength === 'object' ? JSON.stringify(cardioStrength) : cardioStrength,
-        clinicalNotes: typeof clinicalNotes === 'object' ? JSON.stringify(clinicalNotes) : clinicalNotes,
+        strengthAssessment: typeof strengthAssessment === 'object' ? JSON.stringify(strengthAssessment) : strengthAssessment,
+        cardiovascularData: typeof cardiovascularData === 'object' ? JSON.stringify(cardiovascularData) : cardiovascularData,
+        clinicalNotes: typeof clinicalNotes === 'object' ? JSON.stringify(clinicalNotes) : (clinicalNotes || null),
       },
       include: {
         client: true,

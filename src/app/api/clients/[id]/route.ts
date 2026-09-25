@@ -20,6 +20,10 @@ export async function GET(
       include: {
         assignedSpecialist: true,
         packages: {
+          include: {
+            package: true,
+            packageFreezes: true,
+          },
           orderBy: { createdAt: 'desc' },
         },
         bookings: {
@@ -34,7 +38,11 @@ export async function GET(
         },
         attendances: {
           include: {
-            session: true,
+            session: {
+              include: {
+                specialist: true,
+              },
+            },
             markedByUser: {
               select: { name: true, role: true },
             },
@@ -51,7 +59,7 @@ export async function GET(
           include: {
             specialist: true,
           },
-          orderBy: { date: 'desc' },
+          orderBy: { assessmentDate: 'desc' },
         },
         notes: {
           include: {
@@ -64,6 +72,21 @@ export async function GET(
             loggedByUser: { select: { name: true } },
           },
           orderBy: { followUpDate: 'desc' },
+        },
+        documents: {
+          orderBy: { uploadedAt: 'desc' },
+        },
+        consents: {
+          orderBy: { createdAt: 'desc' },
+        },
+        packageFreezes: {
+          include: {
+            clientPackage: true,
+          },
+          orderBy: { createdAt: 'desc' },
+        },
+        notifications: {
+          orderBy: { scheduledAt: 'desc' },
         },
       },
     });
@@ -97,8 +120,8 @@ export async function PUT(
       dob,
       gender,
       address,
-      emergencyContactName,
-      emergencyContactPhone,
+      emergencyContact,
+      emergencyPhone,
       referralSource,
       status,
       assignedSpecialistId,
@@ -109,15 +132,15 @@ export async function PUT(
       data: {
         ...(name && { name }),
         ...(phone && { phone }),
-        email: email || null,
-        dob: dob ? new Date(dob) : null,
-        gender: gender || null,
-        address: address || null,
-        emergencyContactName: emergencyContactName || null,
-        emergencyContactPhone: emergencyContactPhone || null,
+        email: email !== undefined ? email : undefined,
+        dob: dob ? new Date(dob) : undefined,
+        gender: gender !== undefined ? gender : undefined,
+        address: address !== undefined ? address : undefined,
+        emergencyContact: emergencyContact !== undefined ? emergencyContact : undefined,
+        emergencyPhone: emergencyPhone !== undefined ? emergencyPhone : undefined,
         ...(referralSource && { referralSource }),
         ...(status && { status }),
-        assignedSpecialistId: assignedSpecialistId || null,
+        assignedSpecialistId: assignedSpecialistId !== undefined ? assignedSpecialistId : undefined,
       },
       include: {
         assignedSpecialist: true,
@@ -142,22 +165,16 @@ export async function DELETE(
     }
 
     const userRole = (session?.user as any)?.role;
-    if (userRole !== 'OWNER' && userRole !== 'MANAGER' && userRole !== 'RECEPTIONIST') {
+    if (userRole !== 'OWNER') {
       return NextResponse.json(
-        { error: 'Forbidden: Insufficient permissions to remove client records' },
+        { error: 'Forbidden: Only OWNER can permanently delete client records' },
         { status: 403 }
       );
     }
 
-
     const client = await prisma.client.findFirst({
       where: {
         OR: [{ id: params.id }, { clientId: params.id }],
-      },
-      include: {
-        bookings: {
-          select: { sessionId: true },
-        },
       },
     });
 
@@ -165,26 +182,8 @@ export async function DELETE(
       return NextResponse.json({ error: 'Client not found' }, { status: 404 });
     }
 
-    const affectedSessionIds = Array.from(
-      new Set(client.bookings.map((b) => b.sessionId).filter(Boolean))
-    );
-
-    await prisma.$transaction(async (tx) => {
-      // Cascade delete handles packages, bookings, attendances, payments, assessments, notes, followups
-      await tx.client.delete({
-        where: { id: client.id },
-      });
-
-      // Recalculate current capacity for any affected sessions
-      for (const sessId of affectedSessionIds) {
-        const activeCount = await tx.booking.count({
-          where: { sessionId: sessId, status: 'CONFIRMED' },
-        });
-        await tx.session.update({
-          where: { id: sessId },
-          data: { currentCapacity: activeCount },
-        });
-      }
+    await prisma.client.delete({
+      where: { id: client.id },
     });
 
     return NextResponse.json({
@@ -196,4 +195,3 @@ export async function DELETE(
     return NextResponse.json({ error: 'Failed to delete client' }, { status: 500 });
   }
 }
-

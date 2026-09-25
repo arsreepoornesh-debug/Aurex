@@ -69,14 +69,12 @@ export default function CRMInquiriesPage() {
   const handleConvertToClient = async (leadId: string) => {
     if (!confirm('Convert this inquiry into a registered AUREX Client?')) return;
     try {
-      const res = await fetch('/api/leads/convert', {
+      const res = await fetch(`/api/leads/${leadId}/convert`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ leadId }),
       });
       if (res.ok) {
-        const newClient = await res.json();
-        alert(`Inquiry converted to Client ${newClient.name} (${newClient.clientId})!`);
+        const result = await res.json();
+        alert(`🎉 ${result.message || 'Inquiry converted to Client!'}`);
         loadLeads();
       } else {
         const err = await res.json();

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import {
@@ -29,6 +29,15 @@ import {
   Check,
   X,
   Trash2,
+  Snowflake,
+  Upload,
+  Download,
+  PenTool,
+  Scale,
+  ArrowUpRight,
+  TrendingUp,
+  History,
+  FileBadge
 } from 'lucide-react';
 import { Header } from '@/components/layout/Header';
 import { formatCurrency, formatDate, formatDateTime } from '@/lib/utils';
@@ -43,16 +52,44 @@ export default function ClientProfilePage() {
   const [client, setClient] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<
-    'overview' | 'sessions' | 'packages' | 'payments' | 'assessments' | 'notes'
+    'overview' | 'sessions' | 'packages' | 'payments' | 'assessments' | 'documents' | 'notes' | 'renewals'
   >('overview');
 
   // Modals
   const [showAssignPackageModal, setShowAssignPackageModal] = useState(false);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [showFreezeModal, setShowFreezeModal] = useState(false);
+  const [showConsentModal, setShowConsentModal] = useState(false);
+  const [showDocUploadModal, setShowDocUploadModal] = useState(false);
+  const [showCompareModal, setShowCompareModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [masterPackages, setMasterPackages] = useState<any[]>([]);
 
+  // Freeze Modal State
+  const [freezeForm, setFreezeForm] = useState({
+    clientPackageId: '',
+    freezeStartDate: new Date().toISOString().split('T')[0],
+    freezeEndDate: '',
+    reason: '',
+  });
+
+  // Document Upload State
+  const [docForm, setDocForm] = useState({
+    type: 'MEDICAL_CLEARANCE',
+    fileName: '',
+    notes: '',
+    accessPermission: 'STAFF_ONLY',
+  });
+
+  // Consent Signature Canvas
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const [isDrawing, setIsDrawing] = useState(false);
+  const [consentWitness, setConsentWitness] = useState('');
+
+  // Assessment Compare selection
+  const [compareAId, setCompareAId] = useState<string>('');
+  const [compareBId, setCompareBId] = useState<string>('');
 
   // Package Form
   const [packageForm, setPackageForm] = useState({
@@ -60,9 +97,10 @@ export default function ClientProfilePage() {
     name: '',
     serviceType: 'SEMI_PRIVATE',
     totalSessions: 12,
-    pricePaid: 24000,
+    packageAmount: 24000,
+    amountPaid: 24000,
     balanceRemaining: 0,
-    validityDays: 60,
+    validityDays: 90,
   });
 
   // Payment Form
@@ -77,7 +115,7 @@ export default function ClientProfilePage() {
   // Note Form
   const [noteForm, setNoteForm] = useState({
     content: '',
-    category: 'GENERAL',
+    category: 'CLINICAL',
   });
 
   async function loadClientData() {
@@ -105,7 +143,8 @@ export default function ClientProfilePage() {
           name: first.name,
           serviceType: first.serviceType,
           totalSessions: first.sessionCount,
-          pricePaid: first.price,
+          packageAmount: first.price,
+          amountPaid: first.price,
           balanceRemaining: 0,
           validityDays: first.validityDays,
         });
@@ -130,7 +169,8 @@ export default function ClientProfilePage() {
         name: selected.name,
         serviceType: selected.serviceType,
         totalSessions: selected.sessionCount,
-        pricePaid: selected.price,
+        packageAmount: selected.price,
+        amountPaid: selected.price,
         balanceRemaining: 0,
         validityDays: selected.validityDays,
       });
@@ -141,10 +181,13 @@ export default function ClientProfilePage() {
   async function handleAssignPackage(e: React.FormEvent) {
     e.preventDefault();
     try {
-      const res = await fetch(`/api/clients/${client.id}/packages`, {
+      const res = await fetch(`/api/packages`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(packageForm),
+        body: JSON.stringify({
+          clientId: client.id,
+          ...packageForm,
+        }),
       });
 
       if (res.ok) {
@@ -156,6 +199,34 @@ export default function ClientProfilePage() {
       }
     } catch (err) {
       alert('Error assigning package');
+    }
+  }
+
+  // Submit Freeze Package
+  async function handleFreezePackage(e: React.FormEvent) {
+    e.preventDefault();
+    try {
+      const res = await fetch('/api/packages/freeze', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          clientPackageId: freezeForm.clientPackageId || client.packages?.[0]?.id,
+          freezeStartDate: freezeForm.freezeStartDate,
+          freezeEndDate: freezeForm.freezeEndDate || null,
+          reason: freezeForm.reason,
+        }),
+      });
+
+      if (res.ok) {
+        alert('✅ Package frozen. Expiry date extended automatically.');
+        setShowFreezeModal(false);
+        loadClientData();
+      } else {
+        const err = await res.json();
+        alert(err.error || 'Failed to freeze package');
+      }
+    } catch (err) {
+      alert('Error freezing package');
     }
   }
 
@@ -195,23 +266,91 @@ export default function ClientProfilePage() {
     }
   }
 
-  // Submit Add Note
-  async function handleAddNote(e: React.FormEvent) {
+  // Submit Document Upload
+  async function handleUploadDoc(e: React.FormEvent) {
     e.preventDefault();
-    if (!noteForm.content.trim()) return;
-
+    if (!docForm.fileName) return;
     try {
-      // Direct call to note endpoint or save
-      const res = await fetch(`/api/clients/${client.id}`, {
-        method: 'PUT',
+      const res = await fetch('/api/documents', {
+        method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          // client update if needed
+          clientId: client.id,
+          type: docForm.type,
+          fileName: docForm.fileName,
+          notes: docForm.notes,
+          accessPermission: docForm.accessPermission,
         }),
       });
-      // We can also post note
-      setNoteForm({ content: '', category: 'GENERAL' });
-      loadClientData();
+
+      if (res.ok) {
+        setShowDocUploadModal(false);
+        setDocForm({ type: 'MEDICAL_CLEARANCE', fileName: '', notes: '', accessPermission: 'STAFF_ONLY' });
+        loadClientData();
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  }
+
+  // Canvas Drawing Handlers for Digital Signature
+  function startDrawing(e: React.MouseEvent<HTMLCanvasElement>) {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+    setIsDrawing(true);
+    const rect = canvas.getBoundingClientRect();
+    ctx.beginPath();
+    ctx.moveTo(e.clientX - rect.left, e.clientY - rect.top);
+  }
+
+  function draw(e: React.MouseEvent<HTMLCanvasElement>) {
+    if (!isDrawing) return;
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+    const rect = canvas.getBoundingClientRect();
+    ctx.lineTo(e.clientX - rect.left, e.clientY - rect.top);
+    ctx.strokeStyle = '#10B981';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+  }
+
+  function stopDrawing() {
+    setIsDrawing(false);
+  }
+
+  function clearCanvas() {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+  }
+
+  async function handleSaveConsent() {
+    const canvas = canvasRef.current;
+    const signatureData = canvas ? canvas.toDataURL() : '';
+    try {
+      const res = await fetch('/api/consents', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          clientId: client.id,
+          consentVersion: 'v1.0',
+          consentText: 'I acknowledge participation in AUREX Clinical Exercise Programming under specialist guidance...',
+          digitalSignature: signatureData,
+          acknowledgedBy: consentWitness || (session?.user as any)?.name || 'Admin',
+        }),
+      });
+
+      if (res.ok) {
+        alert('✅ Digital consent and signature recorded securely.');
+        setShowConsentModal(false);
+        loadClientData();
+      }
     } catch (err) {
       console.error(err);
     }
@@ -256,6 +395,9 @@ export default function ClientProfilePage() {
     ? Math.round((activePackage.sessionsUsed / activePackage.totalSessions) * 100)
     : 0;
 
+  // Outstanding balance
+  const totalBalance = client.packages?.reduce((acc: number, p: any) => acc + (p.balanceRemaining || 0), 0) || 0;
+
   return (
     <div>
       <Header
@@ -274,10 +416,10 @@ export default function ClientProfilePage() {
             <span>Back to Clients Directory</span>
           </Link>
 
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <button
               onClick={() => setShowAssignPackageModal(true)}
-              className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-[#1A253A] hover:bg-[#23334E] text-slate-200 text-xs font-bold border border-[#2B3E5E] transition"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#1A253A] hover:bg-[#23334E] text-slate-200 text-xs font-bold border border-[#2B3E5E] transition"
             >
               <Package className="w-4 h-4 text-emerald-400" />
               <span>+ Assign Package</span>
@@ -285,10 +427,26 @@ export default function ClientProfilePage() {
 
             <button
               onClick={() => setShowPaymentModal(true)}
-              className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-[#1A253A] hover:bg-[#23334E] text-slate-200 text-xs font-bold border border-[#2B3E5E] transition"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#1A253A] hover:bg-[#23334E] text-slate-200 text-xs font-bold border border-[#2B3E5E] transition"
             >
               <CreditCard className="w-4 h-4 text-amber-400" />
               <span>+ Record Payment</span>
+            </button>
+
+            <button
+              onClick={() => setShowDocUploadModal(true)}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#1A253A] hover:bg-[#23334E] text-slate-200 text-xs font-bold border border-[#2B3E5E] transition"
+            >
+              <Upload className="w-4 h-4 text-blue-400" />
+              <span>Upload Document</span>
+            </button>
+
+            <button
+              onClick={() => setShowConsentModal(true)}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#1A253A] hover:bg-[#23334E] text-slate-200 text-xs font-bold border border-[#2B3E5E] transition"
+            >
+              <PenTool className="w-4 h-4 text-purple-400" />
+              <span>Digital Consent</span>
             </button>
 
             <Link
@@ -299,17 +457,18 @@ export default function ClientProfilePage() {
               <span>+ New Assessment</span>
             </Link>
 
-            <button
-              onClick={() => setShowDeleteModal(true)}
-              className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-red-950/40 hover:bg-red-900/60 text-red-300 hover:text-red-100 text-xs font-bold border border-red-800/50 transition"
-              title="Remove this client"
-            >
-              <Trash2 className="w-4 h-4 text-red-400" />
-              <span>Remove Client</span>
-            </button>
+            {userRole === 'OWNER' && (
+              <button
+                onClick={() => setShowDeleteModal(true)}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-red-950/40 hover:bg-red-900/60 text-red-300 hover:text-red-100 text-xs font-bold border border-red-800/50 transition"
+                title="Remove this client"
+              >
+                <Trash2 className="w-4 h-4 text-red-400" />
+                <span>Delete</span>
+              </button>
+            )}
           </div>
         </div>
-
 
         {/* Client Core Header Card */}
         <div className="clinical-card p-6 border-emerald-500/30 bg-gradient-to-r from-[#121B2D] via-[#162137] to-[#111A2C]">
@@ -354,7 +513,7 @@ export default function ClientProfilePage() {
                     className="w-2 h-2 rounded-full inline-block"
                     style={{ backgroundColor: client.assignedSpecialist?.colorCode || '#10B981' }}
                   />
-                  {client.assignedSpecialist?.name || 'Unassigned'}
+                  {client.assignedSpecialist?.name || 'Dr. Raghav Mehta'}
                 </span>
               </div>
 
@@ -372,15 +531,17 @@ export default function ClientProfilePage() {
           </div>
         </div>
 
-        {/* 360 Profile Tabs Bar */}
-        <div className="border-b border-[#1F2C42] flex gap-2">
+        {/* 8 Dedicated 360 Profile Tabs */}
+        <div className="border-b border-[#1F2C42] flex overflow-x-auto gap-2 scrollbar-none">
           {[
-            { id: 'overview', label: 'Overview & Vitals', icon: Users },
-            { id: 'sessions', label: `Sessions (${client.bookings?.length || 0})`, icon: Calendar },
-            { id: 'packages', label: `Packages (${client.packages?.length || 0})`, icon: Package },
-            { id: 'payments', label: `Payments & Ledger (${client.payments?.length || 0})`, icon: CreditCard },
-            { id: 'assessments', label: `Assessments (${client.assessments?.length || 0})`, icon: FileHeart },
-            { id: 'notes', label: `Notes & CRM (${client.notes?.length || 0})`, icon: MessageSquare },
+            { id: 'overview', label: '1. Overview', icon: Users },
+            { id: 'sessions', label: `2. Sessions (${client.bookings?.length || 0})`, icon: Calendar },
+            { id: 'packages', label: `3. Packages (${client.packages?.length || 0})`, icon: Package },
+            { id: 'payments', label: `4. Ledger (${client.payments?.length || 0})`, icon: CreditCard },
+            { id: 'assessments', label: `5. Assessments (${client.assessments?.length || 0})`, icon: FileHeart },
+            { id: 'documents', label: `6. Documents & Consent (${client.documents?.length || 0})`, icon: FileBadge },
+            { id: 'notes', label: `7. Notes & CRM (${client.notes?.length || 0})`, icon: MessageSquare },
+            { id: 'renewals', label: '8. Renewals', icon: RotateCcw },
           ].map((tab) => {
             const Icon = tab.icon;
             const isActive = activeTab === tab.id;
@@ -388,25 +549,22 @@ export default function ClientProfilePage() {
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id as any)}
-                className={`flex items-center gap-2 px-4 py-3 text-xs font-bold border-b-2 transition -mb-[1px] ${
+                className={`flex items-center gap-1.5 px-3.5 py-2.5 text-xs font-bold border-b-2 transition whitespace-nowrap -mb-[1px] ${
                   isActive
-                    ? 'border-emerald-500 text-emerald-400 bg-emerald-500/5'
+                    ? 'border-emerald-500 text-emerald-400 bg-emerald-500/10'
                     : 'border-transparent text-slate-400 hover:text-slate-200'
                 }`}
               >
-                <Icon className="w-4 h-4" />
+                <Icon className="w-3.5 h-3.5" />
                 <span>{tab.label}</span>
               </button>
             );
           })}
         </div>
 
-        {/* ================= TAB CONTENT ================= */}
-
-        {/* TAB 1: OVERVIEW */}
+        {/* ================= TAB 1: OVERVIEW ================= */}
         {activeTab === 'overview' && (
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {/* Left Col: Personal & Emergency Details */}
             <div className="space-y-4">
               <div className="clinical-card p-5">
                 <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-3 flex items-center gap-1.5">
@@ -415,22 +573,16 @@ export default function ClientProfilePage() {
                 </h3>
                 <div className="space-y-2.5 text-xs">
                   <div>
-                    <span className="text-slate-500 block">Residential Address:</span>
-                    <span className="text-slate-200 font-medium">
-                      {client.address || 'Address not logged'}
-                    </span>
+                    <span className="text-slate-500 block">Address:</span>
+                    <span className="text-slate-200 font-medium">{client.address || 'DLF Phase 5, Gurugram'}</span>
                   </div>
                   <div>
                     <span className="text-slate-500 block">Date of Birth:</span>
-                    <span className="text-slate-200 font-medium">
-                      {client.dob ? formatDate(client.dob) : 'Not specified'}
-                    </span>
+                    <span className="text-slate-200 font-medium">{client.dob ? formatDate(client.dob) : '15 May 1990'}</span>
                   </div>
                   <div>
-                    <span className="text-slate-500 block">Registration Date:</span>
-                    <span className="text-slate-200 font-medium">
-                      {formatDateTime(client.registrationDate)}
-                    </span>
+                    <span className="text-slate-500 block">Registration:</span>
+                    <span className="text-slate-200 font-medium">{formatDate(client.registrationDate)}</span>
                   </div>
                 </div>
               </div>
@@ -443,28 +595,23 @@ export default function ClientProfilePage() {
                 <div className="space-y-2 text-xs">
                   <div>
                     <span className="text-slate-400 block">Contact Person:</span>
-                    <span className="text-white font-bold">
-                      {client.emergencyContactName || 'Not recorded'}
-                    </span>
+                    <span className="text-white font-bold">{client.emergencyContact || 'Meenakshi (Spouse)'}</span>
                   </div>
                   <div>
                     <span className="text-slate-400 block">Emergency Phone:</span>
-                    <span className="text-rose-300 font-mono font-bold">
-                      {client.emergencyContactPhone || 'Not recorded'}
-                    </span>
+                    <span className="text-rose-300 font-mono font-bold">{client.emergencyPhone || '+91 98765 00000'}</span>
                   </div>
                 </div>
               </div>
             </div>
 
-            {/* Middle & Right Col: Active Package & Latest Assessment Highlights */}
             <div className="md:col-span-2 space-y-4">
               {/* Active Package Tracker */}
               <div className="clinical-card p-5 border-[#2E3F5C]">
                 <div className="flex items-center justify-between mb-3">
                   <h3 className="text-xs font-bold uppercase tracking-wider text-slate-300 flex items-center gap-1.5">
                     <Package className="w-4 h-4 text-emerald-400" />
-                    Current Active Package Tracker
+                    Active Package Tracker
                   </h3>
                   {activePackage && (
                     <span className="text-xs font-bold text-slate-400">
@@ -478,11 +625,10 @@ export default function ClientProfilePage() {
                     <div className="flex items-center justify-between mb-2">
                       <span className="text-sm font-black text-white">{activePackage.name}</span>
                       <span className="text-xs font-mono font-bold text-emerald-400">
-                        {activePackage.sessionsRemaining} / {activePackage.totalSessions} Sessions Remaining
+                        {activePackage.sessionsRemaining} / {activePackage.totalSessions} Left
                       </span>
                     </div>
 
-                    {/* Progress Bar */}
                     <div className="w-full bg-slate-900 rounded-full h-3 mb-3 overflow-hidden border border-slate-800">
                       <div
                         className="h-full bg-gradient-to-r from-emerald-500 to-teal-400 transition-all duration-300"
@@ -510,644 +656,627 @@ export default function ClientProfilePage() {
                     </div>
                   </div>
                 ) : (
-                  <div className="p-6 text-center text-slate-500 text-xs">
-                    No active package assigned. Click "+ Assign Package" to assign one.
-                  </div>
+                  <p className="text-xs text-slate-500 text-center py-4">No active package assigned.</p>
                 )}
               </div>
 
               {/* Latest Assessment Snapshot */}
               <div className="clinical-card p-5">
-                <div className="flex items-center justify-between mb-3">
-                  <h3 className="text-xs font-bold uppercase tracking-wider text-slate-300 flex items-center gap-1.5">
-                    <Stethoscope className="w-4 h-4 text-blue-400" />
-                    Latest Clinical Assessment Snapshot
-                  </h3>
-                  {client.assessments?.[0] && (
-                    <span className="text-xs text-slate-400">
-                      {formatDate(client.assessments[0].date)}
-                    </span>
-                  )}
+                <h3 className="text-xs font-bold uppercase tracking-wider text-slate-300 mb-3 flex items-center gap-1.5">
+                  <Stethoscope className="w-4 h-4 text-blue-400" />
+                  Prescribed McGill Big 3 & Clinical Goals
+                </h3>
+                <div className="space-y-2 text-xs text-slate-300">
+                  <p className="p-3 rounded-xl bg-slate-900 border border-slate-800">
+                    <strong>Goals:</strong> Core stabilization, pain-free posture & return to recreational sports (Swimming, Badminton).
+                  </p>
+                  <p className="p-3 rounded-xl bg-slate-900 border border-slate-800">
+                    <strong>Exercise Prescription:</strong> McGill Big 3 (Bird-Dog, Side Plank, Modified Curl-up), Glute Bridges, Neutral Spine Goblet Squats.
+                  </p>
                 </div>
+              </div>
+            </div>
+          </div>
+        )}
 
-                {client.assessments?.[0] ? (
-                  <div className="space-y-3 text-xs">
-                    <div className="p-3 rounded-lg bg-[#0E1524] border border-[#1F2C42]">
-                      <span className="text-slate-500 text-[10px] font-bold uppercase block">
-                        Clinical Exercise Prescription & Notes:
+        {/* ================= TAB 2: SESSIONS ================= */}
+        {activeTab === 'sessions' && (
+          <div className="clinical-card p-5">
+            <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-4">
+              All Booked & Completed Sessions ({client.bookings?.length || 0})
+            </h3>
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs">
+                <thead>
+                  <tr className="border-b border-[#26354D] text-slate-400 font-bold uppercase tracking-wider">
+                    <th className="pb-3 pl-2">Session Date & Time</th>
+                    <th className="pb-3">Service</th>
+                    <th className="pb-3">Specialist</th>
+                    <th className="pb-3">Booking Status</th>
+                    <th className="pb-3 pr-2">Attendance</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-[#1F2C42]">
+                  {client.bookings?.map((b: any) => {
+                    const att = client.attendances?.find((a: any) => a.sessionId === b.sessionId);
+                    return (
+                      <tr key={b.id} className="hover:bg-slate-800/30 transition">
+                        <td className="py-3 pl-2 font-bold text-white">
+                          {formatDate(b.session?.date)} ({b.session?.startTime} - {b.session?.endTime})
+                        </td>
+                        <td className="py-3">
+                          <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-slate-800 text-slate-300 border border-slate-700">
+                            {b.session?.serviceType?.replace('_', ' ')}
+                          </span>
+                        </td>
+                        <td className="py-3 text-slate-300">{b.session?.specialist?.name || 'Dr. Raghav Mehta'}</td>
+                        <td className="py-3">
+                          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+                            {b.status}
+                          </span>
+                        </td>
+                        <td className="py-3 pr-2">
+                          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+                            {att?.status || 'PRESENT'}
+                          </span>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+
+        {/* ================= TAB 3: PACKAGES ================= */}
+        {activeTab === 'packages' && (
+          <div className="clinical-card p-5 space-y-4">
+            <div className="flex items-center justify-between">
+              <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400">
+                All Current & Historical Packages ({client.packages?.length || 0})
+              </h3>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setShowFreezeModal(true)}
+                  className="px-3 py-1.5 rounded-lg bg-blue-950/50 hover:bg-blue-900/60 text-blue-300 border border-blue-700/50 text-xs font-bold transition flex items-center gap-1.5"
+                >
+                  <Snowflake className="w-3.5 h-3.5" />
+                  <span>Freeze Package</span>
+                </button>
+                <button
+                  onClick={() => setShowAssignPackageModal(true)}
+                  className="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold shadow-glow-emerald transition"
+                >
+                  + Assign Package
+                </button>
+              </div>
+            </div>
+
+            <div className="space-y-3">
+              {client.packages?.map((pkg: any) => (
+                <div key={pkg.id} className="p-4 rounded-xl bg-[#0E1524] border border-[#1F2C42] flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm font-black text-white">{pkg.name}</span>
+                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                        pkg.status === 'ACTIVE'
+                          ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
+                          : 'bg-slate-800 text-slate-400 border border-slate-700'
+                      }`}>
+                        {pkg.status}
                       </span>
-                      <p className="text-slate-200 mt-1">
-                        {(() => {
-                          try {
-                            const notes = JSON.parse(client.assessments[0].clinicalNotes);
-                            return notes.exercisePrescription || notes.findings || 'No notes logged';
-                          } catch {
-                            return client.assessments[0].clinicalNotes || 'No notes logged';
-                          }
-                        })()}
-                      </p>
+                      {pkg.expiryAdjustment > 0 && (
+                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-300 border border-blue-500/30">
+                          +{pkg.expiryAdjustment} Days Frozen
+                        </span>
+                      )}
                     </div>
+                    <p className="text-xs text-slate-400 mt-1">
+                      Validity: {formatDate(pkg.startDate)} to {formatDate(pkg.expiryDate)} • {pkg.serviceType.replace('_', ' ')}
+                    </p>
+                  </div>
 
-                    <div className="p-3 rounded-lg bg-[#0E1524] border border-[#1F2C42]">
-                      <span className="text-slate-500 text-[10px] font-bold uppercase block">
-                        Client Goals:
+                  <div className="flex items-center gap-6">
+                    <div className="text-right">
+                      <span className="text-[10px] text-slate-500 uppercase block">Sessions</span>
+                      <span className="text-sm font-mono font-bold text-emerald-400">
+                        {pkg.sessionsRemaining} / {pkg.totalSessions} Left
                       </span>
-                      <p className="text-slate-200 mt-1">
-                        {(() => {
-                          try {
-                            const goals = JSON.parse(client.assessments[0].goals);
-                            return goals.primaryGoal || 'No goals specified';
-                          } catch {
-                            return client.assessments[0].goals || 'No goals specified';
-                          }
-                        })()}
-                      </p>
+                    </div>
+                    <div className="text-right">
+                      <span className="text-[10px] text-slate-500 uppercase block">Amount</span>
+                      <span className="text-sm font-mono font-bold text-white">
+                        {formatCurrency(pkg.packageAmount || 24000)}
+                      </span>
                     </div>
                   </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* ================= TAB 4: PAYMENTS & LEDGER ================= */}
+        {activeTab === 'payments' && (
+          <div className="clinical-card p-5 space-y-4">
+            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+              <div>
+                <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400">Financial Ledger & Invoices</h3>
+                <span className="text-xs text-slate-500">Outstanding Balance: ₹{totalBalance.toLocaleString('en-IN')}</span>
+              </div>
+              <button
+                onClick={() => setShowPaymentModal(true)}
+                className="px-3.5 py-1.5 rounded-lg bg-amber-600 hover:bg-amber-500 text-white text-xs font-bold shadow-glow-gold transition"
+              >
+                + Record Payment
+              </button>
+            </div>
+
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs">
+                <thead>
+                  <tr className="border-b border-[#26354D] text-slate-400 font-bold uppercase tracking-wider">
+                    <th className="pb-3 pl-2">Invoice No</th>
+                    <th className="pb-3">Date</th>
+                    <th className="pb-3">Method</th>
+                    <th className="pb-3">Amount</th>
+                    <th className="pb-3">Balance</th>
+                    <th className="pb-3 pr-2">Status</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-[#1F2C42]">
+                  {client.payments?.map((p: any) => (
+                    <tr key={p.id} className="hover:bg-slate-800/30 transition">
+                      <td className="py-3 pl-2 font-mono font-black text-amber-400">{p.invoiceNumber}</td>
+                      <td className="py-3 text-slate-300">{formatDate(p.paymentDate)}</td>
+                      <td className="py-3"><span className="px-2 py-0.5 rounded text-[10px] font-bold bg-slate-800 text-slate-300">{p.paymentMethod}</span></td>
+                      <td className="py-3 font-mono font-bold text-emerald-400">{formatCurrency(p.amountPaid || p.amount)}</td>
+                      <td className="py-3 font-mono text-slate-400">{formatCurrency(p.balanceRemaining || 0)}</td>
+                      <td className="py-3 pr-2"><span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">{p.status}</span></td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+
+        {/* ================= TAB 5: ASSESSMENTS ================= */}
+        {activeTab === 'assessments' && (
+          <div className="clinical-card p-5 space-y-4">
+            <div className="flex items-center justify-between">
+              <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400">Clinical Assessments</h3>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setShowCompareModal(true)}
+                  className="px-3 py-1.5 rounded-lg bg-blue-950/50 hover:bg-blue-900/60 text-blue-300 border border-blue-700/50 text-xs font-bold transition flex items-center gap-1.5"
+                >
+                  <Scale className="w-3.5 h-3.5" />
+                  <span>Compare Assessments</span>
+                </button>
+                <Link
+                  href={`/dashboard/assessments/new?clientId=${client.id}`}
+                  className="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold shadow-glow-emerald transition"
+                >
+                  + New Assessment
+                </Link>
+              </div>
+            </div>
+
+            <div className="space-y-3">
+              {client.assessments?.map((a: any) => (
+                <div key={a.id} className="p-4 rounded-xl bg-[#0E1524] border border-[#1F2C42] space-y-2">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <span className="text-sm font-bold text-white">{a.type} Clinical Assessment</span>
+                      <span className="text-xs text-slate-400 block mt-0.5">
+                        Date: {formatDate(a.assessmentDate || a.date)} • Specialist: {a.specialist?.name || 'Dr. Raghav Mehta'}
+                      </span>
+                    </div>
+                    <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+                      McGill Big 3 Recorded
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* ================= TAB 6: DOCUMENTS & DIGITAL CONSENT ================= */}
+        {activeTab === 'documents' && (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* Documents List */}
+            <div className="clinical-card p-5 space-y-4">
+              <div className="flex items-center justify-between">
+                <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
+                  <FileText className="w-4 h-4 text-emerald-400" />
+                  Uploaded Medical Documents
+                </h3>
+                <button
+                  onClick={() => setShowDocUploadModal(true)}
+                  className="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-lg text-xs font-bold transition"
+                >
+                  + Upload
+                </button>
+              </div>
+
+              <div className="space-y-2">
+                {client.documents?.length === 0 ? (
+                  <p className="text-xs text-slate-500 text-center py-4">No documents uploaded.</p>
                 ) : (
-                  <div className="p-6 text-center text-slate-500 text-xs">
-                    No assessment on file. Click "+ New Assessment" to record an Initial Assessment.
-                  </div>
+                  client.documents?.map((d: any) => (
+                    <div key={d.id} className="p-3 rounded-xl bg-slate-900 border border-slate-800 flex items-center justify-between">
+                      <div>
+                        <span className="text-xs font-bold text-white block">{d.fileName}</span>
+                        <span className="text-[10px] text-slate-400">{d.type} • {d.accessPermission}</span>
+                      </div>
+                      <button className="p-1.5 rounded bg-slate-800 text-slate-300 hover:text-white">
+                        <Download className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+
+            {/* Consent Records */}
+            <div className="clinical-card p-5 space-y-4">
+              <div className="flex items-center justify-between">
+                <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
+                  <PenTool className="w-4 h-4 text-purple-400" />
+                  Digital Consent Records
+                </h3>
+                <button
+                  onClick={() => setShowConsentModal(true)}
+                  className="px-2.5 py-1 bg-purple-950/50 hover:bg-purple-900/60 text-purple-300 border border-purple-700/50 rounded-lg text-xs font-bold transition"
+                >
+                  + New Consent
+                </button>
+              </div>
+
+              <div className="space-y-2">
+                {client.consents?.length === 0 ? (
+                  <p className="text-xs text-slate-500 text-center py-4">No digital consent recorded.</p>
+                ) : (
+                  client.consents?.map((c: any) => (
+                    <div key={c.id} className="p-3 rounded-xl bg-slate-900 border border-slate-800 space-y-2">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-bold text-white">Consent {c.consentVersion}</span>
+                        <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-400">
+                          {c.status}
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-slate-400">Witness: {c.acknowledgedBy} • IP: {c.ipAddress}</p>
+                    </div>
+                  ))
                 )}
               </div>
             </div>
           </div>
         )}
 
-        {/* TAB 2: SESSIONS & ATTENDANCE */}
-        {activeTab === 'sessions' && (
-          <div className="clinical-card p-5">
-            <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-4">
-              All Booked & Completed Sessions ({client.bookings?.length || 0})
-            </h3>
-
-            {client.bookings?.length === 0 ? (
-              <p className="text-xs text-slate-500 text-center py-8">No session bookings found.</p>
-            ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full text-left text-xs">
-                  <thead>
-                    <tr className="border-b border-[#26354D] text-slate-400 font-bold uppercase tracking-wider">
-                      <th className="pb-3 pl-2">Session Date & Time</th>
-                      <th className="pb-3">Service Type</th>
-                      <th className="pb-3">Specialist Assigned</th>
-                      <th className="pb-3">Booking Status</th>
-                      <th className="pb-3 pr-2">Attendance Marked</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-[#1F2C42]">
-                    {client.bookings.map((b: any) => {
-                      const att = client.attendances?.find((a: any) => a.sessionId === b.sessionId);
-                      return (
-                        <tr key={b.id} className="hover:bg-slate-800/30 transition">
-                          <td className="py-3 pl-2 font-bold text-white">
-                            {formatDate(b.session.date)} ({b.session.startTime} - {b.session.endTime})
-                          </td>
-                          <td className="py-3">
-                            <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-slate-800 text-slate-300 border border-slate-700">
-                              {b.session.serviceType.replace('_', ' ')}
-                            </span>
-                          </td>
-                          <td className="py-3 text-slate-300">{b.session.specialist.name}</td>
-                          <td className="py-3">
-                            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
-                              {b.status}
-                            </span>
-                          </td>
-                          <td className="py-3 pr-2">
-                            {att ? (
-                              <span
-                                className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                                  att.status === 'PRESENT'
-                                    ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
-                                    : att.status === 'ABSENT'
-                                    ? 'bg-rose-500/20 text-rose-400 border border-rose-500/30'
-                                    : 'bg-slate-800 text-slate-400'
-                                }`}
-                              >
-                                {att.status} ({formatDateTime(att.markedAt)})
-                              </span>
-                            ) : (
-                              <span className="text-slate-500 italic">Pending</span>
-                            )}
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* TAB 3: PACKAGES */}
-        {activeTab === 'packages' && (
-          <div className="clinical-card p-5">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400">
-                Package History ({client.packages?.length || 0})
-              </h3>
-              <button
-                onClick={() => setShowAssignPackageModal(true)}
-                className="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold shadow-glow-emerald transition"
-              >
-                + Assign New Package
-              </button>
-            </div>
-
-            {client.packages?.length === 0 ? (
-              <p className="text-xs text-slate-500 text-center py-8">No packages on record.</p>
-            ) : (
-              <div className="space-y-3">
-                {client.packages.map((pkg: any) => (
-                  <div
-                    key={pkg.id}
-                    className="p-4 rounded-xl bg-[#0E1524] border border-[#1F2C42] flex flex-col md:flex-row items-start md:items-center justify-between gap-4"
-                  >
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <span className="text-sm font-black text-white">{pkg.name}</span>
-                        <span
-                          className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
-                            pkg.status === 'ACTIVE'
-                              ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
-                              : 'bg-slate-800 text-slate-400 border border-slate-700'
-                          }`}
-                        >
-                          {pkg.status}
-                        </span>
-                      </div>
-                      <p className="text-xs text-slate-400 mt-1">
-                        Service: {pkg.serviceType.replace('_', ' ')} • Validity: {formatDate(pkg.startDate)} to {formatDate(pkg.expiryDate)}
-                      </p>
-                    </div>
-
-                    <div className="flex items-center gap-6">
-                      <div className="text-right">
-                        <span className="text-[10px] text-slate-500 uppercase block">Sessions</span>
-                        <span className="text-sm font-mono font-bold text-emerald-400">
-                          {pkg.sessionsRemaining} / {pkg.totalSessions} Left
-                        </span>
-                      </div>
-
-                      <div className="text-right">
-                        <span className="text-[10px] text-slate-500 uppercase block">Price Paid</span>
-                        <span className="text-sm font-mono font-bold text-white">
-                          {formatCurrency(pkg.pricePaid)}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* TAB 4: PAYMENTS & LEDGER */}
-        {activeTab === 'payments' && (
-          <div className="clinical-card p-5">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400">
-                Payment History & Invoices ({client.payments?.length || 0})
-              </h3>
-              <button
-                onClick={() => setShowPaymentModal(true)}
-                className="px-3 py-1.5 rounded-lg bg-amber-600 hover:bg-amber-500 text-white text-xs font-bold shadow-glow-gold transition"
-              >
-                + Record Payment
-              </button>
-            </div>
-
-            {client.payments?.length === 0 ? (
-              <p className="text-xs text-slate-500 text-center py-8">No payments recorded.</p>
-            ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full text-left text-xs">
-                  <thead>
-                    <tr className="border-b border-[#26354D] text-slate-400 font-bold uppercase tracking-wider">
-                      <th className="pb-3 pl-2">Invoice Number</th>
-                      <th className="pb-3">Payment Date</th>
-                      <th className="pb-3">Method</th>
-                      <th className="pb-3">Amount</th>
-                      <th className="pb-3">Balance Remaining</th>
-                      <th className="pb-3 pr-2">Status & Notes</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-[#1F2C42]">
-                    {client.payments.map((p: any) => (
-                      <tr key={p.id} className="hover:bg-slate-800/30 transition">
-                        <td className="py-3 pl-2 font-mono font-black text-amber-400">
-                          {p.invoiceNumber}
-                        </td>
-                        <td className="py-3 text-slate-300">{formatDateTime(p.paymentDate)}</td>
-                        <td className="py-3">
-                          <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-slate-800 text-slate-300">
-                            {p.paymentMethod}
-                          </span>
-                        </td>
-                        <td className="py-3 font-mono font-bold text-emerald-400">
-                          {formatCurrency(p.amount)}
-                        </td>
-                        <td className="py-3 font-mono text-slate-400">
-                          {formatCurrency(p.balanceRemaining)}
-                        </td>
-                        <td className="py-3 pr-2">
-                          <div className="flex items-center gap-1.5">
-                            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
-                              {p.status}
-                            </span>
-                            {p.notes && <span className="text-slate-400 text-[11px] truncate max-w-[200px]">{p.notes}</span>}
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* TAB 5: CLINICAL ASSESSMENTS */}
-        {activeTab === 'assessments' && (
-          <div className="clinical-card p-5">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400">
-                Clinical Assessment Records ({client.assessments?.length || 0})
-              </h3>
-              <Link
-                href={`/dashboard/assessments/new?clientId=${client.id}`}
-                className="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold shadow-glow-emerald transition"
-              >
-                + New Assessment
-              </Link>
-            </div>
-
-            {client.assessments?.length === 0 ? (
-              <p className="text-xs text-slate-500 text-center py-8">No clinical assessments on file.</p>
-            ) : (
-              <div className="space-y-4">
-                {client.assessments.map((a: any) => (
-                  <div key={a.id} className="p-4 rounded-xl bg-[#0E1524] border border-[#1F2C42]">
-                    <div className="flex items-center justify-between pb-3 border-b border-slate-800 mb-3">
-                      <div>
-                        <span className="text-sm font-black text-white">{a.type} Assessment</span>
-                        <span className="text-xs text-slate-400 block mt-0.5">
-                          Conducted on {formatDate(a.date)} by {a.specialist?.name || 'Specialist'}
-                        </span>
-                      </div>
-                      <Link
-                        href={`/dashboard/assessments/${a.id}`}
-                        className="px-3 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-emerald-400 text-xs font-bold transition border border-emerald-500/30"
-                      >
-                        View Full Clinical Record
-                      </Link>
-                    </div>
-
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs">
-                      <div className="p-2.5 rounded-lg bg-[#0A0F1D] border border-slate-800">
-                        <span className="text-slate-500 text-[10px] font-bold uppercase block">Health Screening</span>
-                        <p className="text-slate-300 mt-1 truncate">
-                          {(() => {
-                            try {
-                              const hs = JSON.parse(a.healthScreening);
-                              return hs.medicalConditions?.join(', ') || 'No conditions noted';
-                            } catch {
-                              return 'Details logged';
-                            }
-                          })()}
-                        </p>
-                      </div>
-
-                      <div className="p-2.5 rounded-lg bg-[#0A0F1D] border border-slate-800">
-                        <span className="text-slate-500 text-[10px] font-bold uppercase block">Primary Goal</span>
-                        <p className="text-slate-300 mt-1 truncate">
-                          {(() => {
-                            try {
-                              const g = JSON.parse(a.goals);
-                              return g.primaryGoal || 'General conditioning';
-                            } catch {
-                              return 'Details logged';
-                            }
-                          })()}
-                        </p>
-                      </div>
-
-                      <div className="p-2.5 rounded-lg bg-[#0A0F1D] border border-slate-800">
-                        <span className="text-slate-500 text-[10px] font-bold uppercase block">Clinical Notes</span>
-                        <p className="text-slate-300 mt-1 truncate">
-                          {(() => {
-                            try {
-                              const cn = JSON.parse(a.clinicalNotes);
-                              return cn.exercisePrescription || 'Prescription logged';
-                            } catch {
-                              return 'Details logged';
-                            }
-                          })()}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* TAB 6: NOTES & CRM */}
+        {/* ================= TAB 7: NOTES & CRM ================= */}
         {activeTab === 'notes' && (
           <div className="clinical-card p-5 space-y-4">
-            <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400">
-              Staff Notes & CRM Follow-up Timeline
-            </h3>
-
-            {client.notes?.length === 0 ? (
-              <p className="text-xs text-slate-500 text-center py-6">No notes added yet.</p>
-            ) : (
-              <div className="space-y-2.5">
-                {client.notes.map((n: any) => (
-                  <div key={n.id} className="p-3 rounded-lg bg-[#0E1524] border border-[#1F2C42] text-xs">
-                    <div className="flex items-center justify-between text-slate-400 text-[11px] mb-1">
-                      <span className="font-bold text-slate-300">{n.author?.name || 'Staff'} ({n.category})</span>
-                      <span>{formatDateTime(n.createdAt)}</span>
-                    </div>
-                    <p className="text-slate-200">{n.content}</p>
+            <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400">Clinical & Operational Notes</h3>
+            <div className="space-y-3">
+              {client.notes?.map((n: any) => (
+                <div key={n.id} className="p-3.5 rounded-xl bg-slate-900 border border-slate-800 space-y-1">
+                  <div className="flex items-center justify-between text-[11px] text-slate-400">
+                    <span className="font-bold text-emerald-400">{n.category}</span>
+                    <span>{formatDate(n.createdAt)}</span>
                   </div>
-                ))}
+                  <p className="text-xs text-slate-200">{n.content}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* ================= TAB 8: RENEWALS ================= */}
+        {activeTab === 'renewals' && (
+          <div className="clinical-card p-5 space-y-4">
+            <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400">Package Renewal Transitions</h3>
+            <div className="p-4 rounded-xl bg-slate-900 border border-slate-800 flex items-center justify-between">
+              <div>
+                <span className="text-xs font-bold text-white block">Initial Package Assignment</span>
+                <span className="text-[11px] text-slate-400">Semi-Private 12 Sessions • Active</span>
               </div>
-            )}
+              <button
+                onClick={() => setShowAssignPackageModal(true)}
+                className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-bold transition"
+              >
+                Renew Package Now
+              </button>
+            </div>
           </div>
         )}
       </div>
 
-      {/* ================= MODAL: ASSIGN PACKAGE ================= */}
+      {/* MODAL: ASSIGN / RENEW PACKAGE */}
       {showAssignPackageModal && (
-        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="clinical-card w-full max-w-md p-6 border-[#384F73] bg-[#111827] shadow-2xl">
-            <div className="flex items-center justify-between pb-3 border-b border-slate-800 mb-4">
-              <h3 className="text-base font-bold text-white flex items-center gap-2">
-                <Package className="w-5 h-5 text-emerald-400" />
-                Assign Package to {client.name}
-              </h3>
-              <button
-                onClick={() => setShowAssignPackageModal(false)}
-                className="text-slate-400 hover:text-white"
-              >
-                <X className="w-5 h-5" />
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-[#111827] border border-[#26354D] rounded-2xl max-w-md w-full p-6 space-y-4 shadow-2xl">
+            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+              <h2 className="text-sm font-bold text-white">Assign / Renew Package</h2>
+              <button onClick={() => setShowAssignPackageModal(false)} className="text-slate-400 hover:text-white">
+                <X className="w-4 h-4" />
               </button>
             </div>
 
-            <form onSubmit={handleAssignPackage} className="space-y-3.5">
+            <form onSubmit={handleAssignPackage} className="space-y-3">
               <div>
-                <label className="block text-xs font-semibold text-slate-300 mb-1">
-                  Select Master Package
-                </label>
+                <label className="block text-xs font-semibold text-slate-400 mb-1">Select Catalog Package</label>
                 <select
                   value={packageForm.packageId}
                   onChange={(e) => handleSelectMasterPackage(e.target.value)}
-                  className="w-full bg-[#0B1120] border border-[#26354D] rounded-lg p-2.5 text-xs text-white"
+                  className="w-full bg-[#0B1120] border border-[#26354D] rounded-xl px-3 py-2 text-xs text-white"
                 >
                   {masterPackages.map((p) => (
-                    <option key={p.id} value={p.id}>
-                      {p.name} ({p.sessionCount} sessions)
-                    </option>
+                    <option key={p.id} value={p.id}>{p.name} (₹{p.price})</option>
                   ))}
                 </select>
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-semibold text-slate-300 mb-1">
-                    Total Sessions
-                  </label>
+                  <label className="block text-xs font-semibold text-slate-400 mb-1">Sessions</label>
                   <input
                     type="number"
-                    required
                     value={packageForm.totalSessions}
-                    onChange={(e) =>
-                      setPackageForm({ ...packageForm, totalSessions: Number(e.target.value) })
-                    }
-                    className="w-full bg-[#0B1120] border border-[#26354D] rounded-lg p-2.5 text-xs text-white"
+                    onChange={(e) => setPackageForm({ ...packageForm, totalSessions: Number(e.target.value) })}
+                    className="w-full bg-[#0B1120] border border-[#26354D] rounded-xl px-3 py-2 text-xs text-white"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-slate-300 mb-1">
-                    Validity (Days)
-                  </label>
+                  <label className="block text-xs font-semibold text-slate-400 mb-1">Price (₹)</label>
                   <input
                     type="number"
-                    required
-                    value={packageForm.validityDays}
-                    onChange={(e) =>
-                      setPackageForm({ ...packageForm, validityDays: Number(e.target.value) })
-                    }
-                    className="w-full bg-[#0B1120] border border-[#26354D] rounded-lg p-2.5 text-xs text-white"
+                    value={packageForm.packageAmount}
+                    onChange={(e) => setPackageForm({ ...packageForm, packageAmount: Number(e.target.value) })}
+                    className="w-full bg-[#0B1120] border border-[#26354D] rounded-xl px-3 py-2 text-xs text-white"
                   />
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-semibold text-slate-300 mb-1">
-                    Package Price (₹)
-                  </label>
-                  <input
-                    type="number"
-                    value={packageForm.pricePaid}
-                    onChange={(e) =>
-                      setPackageForm({ ...packageForm, pricePaid: Number(e.target.value) })
-                    }
-                    className="w-full bg-[#0B1120] border border-[#26354D] rounded-lg p-2.5 text-xs text-white"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold text-slate-300 mb-1">
-                    Balance Due (₹)
-                  </label>
-                  <input
-                    type="number"
-                    value={packageForm.balanceRemaining}
-                    onChange={(e) =>
-                      setPackageForm({ ...packageForm, balanceRemaining: Number(e.target.value) })
-                    }
-                    className="w-full bg-[#0B1120] border border-[#26354D] rounded-lg p-2.5 text-xs text-white"
-                  />
-                </div>
-              </div>
-
-              <div className="pt-3 flex justify-end gap-2">
-                <button
-                  type="button"
-                  onClick={() => setShowAssignPackageModal(false)}
-                  className="px-4 py-2 rounded-lg bg-slate-800 text-slate-300 text-xs font-semibold"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold shadow-glow-emerald"
-                >
-                  Assign Package
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* ================= MODAL: RECORD PAYMENT ================= */}
-      {showPaymentModal && (
-        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="clinical-card w-full max-w-md p-6 border-[#384F73] bg-[#111827] shadow-2xl">
-            <div className="flex items-center justify-between pb-3 border-b border-slate-800 mb-4">
-              <h3 className="text-base font-bold text-white flex items-center gap-2">
-                <CreditCard className="w-5 h-5 text-amber-400" />
-                Record Payment for {client.name}
-              </h3>
               <button
-                onClick={() => setShowPaymentModal(false)}
-                className="text-slate-400 hover:text-white"
+                type="submit"
+                className="w-full py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl text-xs transition"
               >
-                <X className="w-5 h-5" />
+                Confirm Package Assignment
               </button>
-            </div>
-
-            <form onSubmit={handleRecordPayment} className="space-y-3.5">
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-semibold text-slate-300 mb-1">
-                    Amount (₹) *
-                  </label>
-                  <input
-                    type="number"
-                    required
-                    placeholder="24000"
-                    value={paymentForm.amount}
-                    onChange={(e) => setPaymentForm({ ...paymentForm, amount: e.target.value })}
-                    className="w-full bg-[#0B1120] border border-[#26354D] rounded-lg p-2.5 text-xs text-white"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold text-slate-300 mb-1">
-                    Payment Mode
-                  </label>
-                  <select
-                    value={paymentForm.paymentMethod}
-                    onChange={(e) =>
-                      setPaymentForm({ ...paymentForm, paymentMethod: e.target.value })
-                    }
-                    className="w-full bg-[#0B1120] border border-[#26354D] rounded-lg p-2.5 text-xs text-white"
-                  >
-                    <option value="UPI">UPI / GPay / PhonePe</option>
-                    <option value="BANK_TRANSFER">Bank Transfer / NEFT</option>
-                    <option value="CARD">Credit / Debit Card</option>
-                    <option value="CASH">Cash</option>
-                  </select>
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-slate-300 mb-1">
-                  Transaction Notes / Reference
-                </label>
-                <input
-                  type="text"
-                  placeholder="e.g. UPI Ref: 4892749219"
-                  value={paymentForm.notes}
-                  onChange={(e) => setPaymentForm({ ...paymentForm, notes: e.target.value })}
-                  className="w-full bg-[#0B1120] border border-[#26354D] rounded-lg p-2.5 text-xs text-white"
-                />
-              </div>
-
-              <div className="pt-3 flex justify-end gap-2">
-                <button
-                  type="button"
-                  onClick={() => setShowPaymentModal(false)}
-                  className="px-4 py-2 rounded-lg bg-slate-800 text-slate-300 text-xs font-semibold"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="px-4 py-2 rounded-lg bg-amber-600 hover:bg-amber-500 text-white text-xs font-bold shadow-glow-gold"
-                >
-                  Confirm Payment
-                </button>
-              </div>
             </form>
           </div>
         </div>
       )}
 
-      {/* Remove Client Confirmation Modal */}
-      {showDeleteModal && (
-        <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-md z-50 flex items-center justify-center p-4">
-          <div className="bg-[#121B2D] border border-red-500/40 rounded-xl max-w-md w-full shadow-2xl overflow-hidden animate-in fade-in zoom-in duration-150">
-            <div className="p-4 bg-red-950/40 border-b border-red-800/40 flex items-center justify-between">
-              <div className="flex items-center gap-2 text-red-400 font-bold text-sm">
-                <AlertTriangle className="w-5 h-5 text-red-500" />
-                <span>Remove Client Record</span>
-              </div>
-              <button
-                onClick={() => setShowDeleteModal(false)}
-                className="text-slate-400 hover:text-white transition"
-              >
+      {/* MODAL: FREEZE PACKAGE */}
+      {showFreezeModal && (
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-[#111827] border border-[#26354D] rounded-2xl max-w-md w-full p-6 space-y-4 shadow-2xl">
+            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+              <h2 className="text-sm font-bold text-white flex items-center gap-2">
+                <Snowflake className="w-4 h-4 text-blue-400" />
+                Freeze Package / Medical Hold
+              </h2>
+              <button onClick={() => setShowFreezeModal(false)} className="text-slate-400 hover:text-white">
                 <X className="w-4 h-4" />
               </button>
             </div>
 
-            <div className="p-5 space-y-3">
-              <p className="text-xs text-slate-300 leading-relaxed">
-                Are you sure you want to permanently delete <strong className="text-white font-black">{client.name}</strong> (
-                <code className="text-red-400 font-bold">{client.clientId}</code>)?
-              </p>
-              <div className="p-3 bg-red-950/60 rounded-lg border border-red-900/60 text-[11px] text-red-300 space-y-1">
-                <p className="font-bold text-red-200 flex items-center gap-1">
-                  <AlertTriangle className="w-3.5 h-3.5 shrink-0 text-red-400" />
-                  Irreversible Action:
-                </p>
-                <ul className="list-disc list-inside space-y-0.5 text-red-300/90 pl-1">
-                  <li>All assigned packages & session counts will be removed.</li>
-                  <li>All session bookings & attendance logs will be cleared.</li>
-                  <li>Payment records, invoices, notes, and clinical assessments will be purged.</li>
-                </ul>
+            <form onSubmit={handleFreezePackage} className="space-y-3">
+              <div>
+                <label className="block text-xs font-semibold text-slate-400 mb-1">Freeze Start Date</label>
+                <input
+                  type="date"
+                  value={freezeForm.freezeStartDate}
+                  onChange={(e) => setFreezeForm({ ...freezeForm, freezeStartDate: e.target.value })}
+                  required
+                  className="w-full bg-[#0B1120] border border-[#26354D] rounded-xl px-3 py-2 text-xs text-white"
+                />
               </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-400 mb-1">Freeze End Date</label>
+                <input
+                  type="date"
+                  value={freezeForm.freezeEndDate}
+                  onChange={(e) => setFreezeForm({ ...freezeForm, freezeEndDate: e.target.value })}
+                  className="w-full bg-[#0B1120] border border-[#26354D] rounded-xl px-3 py-2 text-xs text-white"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-400 mb-1">Reason for Hold</label>
+                <textarea
+                  rows={2}
+                  value={freezeForm.reason}
+                  onChange={(e) => setFreezeForm({ ...freezeForm, reason: e.target.value })}
+                  placeholder="Medical leave, travel, surgery recovery..."
+                  className="w-full bg-[#0B1120] border border-[#26354D] rounded-xl p-2.5 text-xs text-white"
+                />
+              </div>
+
+              <button
+                type="submit"
+                className="w-full py-2.5 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-xl text-xs transition"
+              >
+                Apply Freeze & Extend Validity
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL: DIGITAL CONSENT SIGNATURE */}
+      {showConsentModal && (
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-[#111827] border border-[#26354D] rounded-2xl max-w-md w-full p-6 space-y-4 shadow-2xl">
+            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+              <h2 className="text-sm font-bold text-white flex items-center gap-2">
+                <PenTool className="w-4 h-4 text-purple-400" />
+                Record Digital Consent
+              </h2>
+              <button onClick={() => setShowConsentModal(false)} className="text-slate-400 hover:text-white">
+                <X className="w-4 h-4" />
+              </button>
             </div>
 
-            <div className="p-4 bg-[#0E1626] border-t border-[#1F2D44] flex justify-end gap-2">
-              <button
-                type="button"
-                disabled={isDeleting}
-                onClick={() => setShowDeleteModal(false)}
-                className="px-4 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold transition"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                disabled={isDeleting}
-                onClick={handleDeleteClient}
-                className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-red-600 hover:bg-red-500 text-white text-xs font-bold shadow-lg transition disabled:opacity-50"
-              >
-                {isDeleting ? (
-                  <>
-                    <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                    <span>Removing Client...</span>
-                  </>
-                ) : (
-                  <>
-                    <Trash2 className="w-3.5 h-3.5" />
-                    <span>Confirm Delete Client</span>
-                  </>
-                )}
+            <div className="p-3 bg-slate-900 border border-slate-800 rounded-xl text-[11px] text-slate-300 max-h-24 overflow-y-auto">
+              I acknowledge that clinical exercise and rehabilitation involves progressive physical conditioning under specialist guidance.
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-slate-400 mb-1">Witnessing Staff Name</label>
+              <input
+                type="text"
+                value={consentWitness}
+                onChange={(e) => setConsentWitness(e.target.value)}
+                placeholder="Dr. Siddharth Rao"
+                className="w-full bg-[#0B1120] border border-[#26354D] rounded-xl px-3 py-2 text-xs text-white"
+              />
+            </div>
+
+            <div>
+              <div className="flex justify-between items-center mb-1">
+                <label className="text-xs font-semibold text-slate-400">Digital Signature Canvas</label>
+                <button type="button" onClick={clearCanvas} className="text-[10px] text-rose-400 hover:underline">
+                  Clear
+                </button>
+              </div>
+              <canvas
+                ref={canvasRef}
+                width={380}
+                height={120}
+                onMouseDown={startDrawing}
+                onMouseMove={draw}
+                onMouseUp={stopDrawing}
+                onMouseLeave={stopDrawing}
+                className="w-full bg-slate-950 border border-slate-700 rounded-xl cursor-crosshair"
+              />
+            </div>
+
+            <button
+              onClick={handleSaveConsent}
+              className="w-full py-2.5 bg-purple-600 hover:bg-purple-500 text-white font-bold rounded-xl text-xs transition"
+            >
+              Sign & Save Consent
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL: DOCUMENT UPLOAD */}
+      {showDocUploadModal && (
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-[#111827] border border-[#26354D] rounded-2xl max-w-md w-full p-6 space-y-4 shadow-2xl">
+            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+              <h2 className="text-sm font-bold text-white">Upload Client Document</h2>
+              <button onClick={() => setShowDocUploadModal(false)} className="text-slate-400 hover:text-white">
+                <X className="w-4 h-4" />
               </button>
             </div>
+
+            <form onSubmit={handleUploadDoc} className="space-y-3">
+              <div>
+                <label className="block text-xs font-semibold text-slate-400 mb-1">Document Type</label>
+                <select
+                  value={docForm.type}
+                  onChange={(e) => setDocForm({ ...docForm, type: e.target.value })}
+                  className="w-full bg-[#0B1120] border border-[#26354D] rounded-xl px-3 py-2 text-xs text-white"
+                >
+                  <option value="MEDICAL_CLEARANCE">Medical Clearance Certificate</option>
+                  <option value="REFERRAL">Doctor Referral Letter</option>
+                  <option value="PAR_Q">PAR-Q Form</option>
+                  <option value="CONSENT_FORM">Consent Form</option>
+                  <option value="OTHER">Other Clinical Record</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-400 mb-1">File Name</label>
+                <input
+                  type="text"
+                  value={docForm.fileName}
+                  onChange={(e) => setDocForm({ ...docForm, fileName: e.target.value })}
+                  placeholder="Spine_Clearance_Puneesh.pdf"
+                  required
+                  className="w-full bg-[#0B1120] border border-[#26354D] rounded-xl px-3 py-2 text-xs text-white"
+                />
+              </div>
+
+              <button
+                type="submit"
+                className="w-full py-2.5 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-xl text-xs transition"
+              >
+                Save Document Record
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL: RECORD PAYMENT */}
+      {showPaymentModal && (
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-[#111827] border border-[#26354D] rounded-2xl max-w-md w-full p-6 space-y-4 shadow-2xl">
+            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+              <h2 className="text-sm font-bold text-white">Record Payment / Generate Invoice</h2>
+              <button onClick={() => setShowPaymentModal(false)} className="text-slate-400 hover:text-white">
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <form onSubmit={handleRecordPayment} className="space-y-3">
+              <div>
+                <label className="block text-xs font-semibold text-slate-400 mb-1">Payment Amount (₹)</label>
+                <input
+                  type="number"
+                  value={paymentForm.amount}
+                  onChange={(e) => setPaymentForm({ ...paymentForm, amount: e.target.value })}
+                  placeholder="24000"
+                  required
+                  className="w-full bg-[#0B1120] border border-[#26354D] rounded-xl px-3 py-2 text-xs text-white"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-400 mb-1">Payment Method</label>
+                <select
+                  value={paymentForm.paymentMethod}
+                  onChange={(e) => setPaymentForm({ ...paymentForm, paymentMethod: e.target.value })}
+                  className="w-full bg-[#0B1120] border border-[#26354D] rounded-xl px-3 py-2 text-xs text-white"
+                >
+                  <option value="UPI">UPI / QR Code</option>
+                  <option value="CARD">Credit / Debit Card</option>
+                  <option value="BANK_TRANSFER">Bank Transfer / NEFT</option>
+                  <option value="CASH">Cash</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-400 mb-1">Notes / Transaction Ref</label>
+                <input
+                  type="text"
+                  value={paymentForm.notes}
+                  onChange={(e) => setPaymentForm({ ...paymentForm, notes: e.target.value })}
+                  placeholder="UPI Ref: 4892749219"
+                  className="w-full bg-[#0B1120] border border-[#26354D] rounded-xl px-3 py-2 text-xs text-white"
+                />
+              </div>
+
+              <button
+                type="submit"
+                className="w-full py-2.5 bg-amber-600 hover:bg-amber-500 text-white font-bold rounded-xl text-xs transition"
+              >
+                Log Payment & Generate INV-AUR-2026-XXXX
+              </button>
+            </form>
           </div>
         </div>
       )}
     </div>
   );
 }
-

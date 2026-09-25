@@ -12,6 +12,17 @@ export default function LoginPage() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
+  async function handleLoginSuccess(userEmail: string) {
+    if (userEmail.includes('specialist')) {
+      router.push('/specialist');
+    } else if (userEmail.includes('client')) {
+      router.push('/portal');
+    } else {
+      router.push('/dashboard');
+    }
+    router.refresh();
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError('');
@@ -28,8 +39,7 @@ export default function LoginPage() {
         setError(res.error);
         setLoading(false);
       } else {
-        router.push('/dashboard');
-        router.refresh();
+        await handleLoginSuccess(email.toLowerCase());
       }
     } catch (err) {
       setError('An unexpected error occurred. Please try again.');
@@ -47,13 +57,12 @@ export default function LoginPage() {
       email: userEmail,
       password: userPass,
       redirect: false,
-    }).then((res) => {
+    }).then(async (res) => {
       if (res?.error) {
         setError(res.error);
         setLoading(false);
       } else {
-        router.push('/dashboard');
-        router.refresh();
+        await handleLoginSuccess(userEmail.toLowerCase());
       }
     });
   }
@@ -65,26 +74,26 @@ export default function LoginPage() {
       <div className="absolute bottom-10 right-10 w-96 h-96 bg-blue-500/10 rounded-full blur-3xl pointer-events-none" />
 
       {/* Main Container */}
-      <div className="w-full max-w-md z-10">
+      <div className="w-full max-w-lg z-10">
         {/* Brand Header */}
-        <div className="text-center mb-8">
+        <div className="text-center mb-6">
           <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-tr from-emerald-600 to-teal-500 shadow-glow-emerald border border-emerald-400/30 mb-4">
             <Activity className="w-8 h-8 text-white stroke-[2.5]" />
           </div>
           <h1 className="text-3xl font-extrabold tracking-tight text-white flex items-center justify-center gap-2">
-            AUREX <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 tracking-normal">ADMIN CMS</span>
+            AUREX <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 tracking-normal">CLINICAL CMS</span>
           </h1>
           <p className="text-slate-400 text-sm mt-1.5 font-medium">
-            Clinical Exercise & Medical Fitness Management
+            Clinical Exercise, Medical Fitness & Active Rehab
           </p>
         </div>
 
         {/* Login Card */}
-        <div className="clinical-card p-6 md:p-8 shadow-2xl border border-[#26354D] bg-[#111827]/90 backdrop-blur-xl">
+        <div className="clinical-card p-6 md:p-8 shadow-2xl border border-[#26354D] bg-[#111827]/90 backdrop-blur-xl rounded-2xl">
           <div className="flex items-center justify-between border-b border-slate-800 pb-4 mb-6">
             <div>
-              <h2 className="text-lg font-bold text-white">Staff Sign In</h2>
-              <p className="text-xs text-slate-400">Internal Admin Portal — Strict RBAC Enforced</p>
+              <h2 className="text-lg font-bold text-white">System Sign In</h2>
+              <p className="text-xs text-slate-400">Strict Role-Based Access Control Enforced</p>
             </div>
             <ShieldCheck className="w-5 h-5 text-emerald-400" />
           </div>
@@ -99,7 +108,7 @@ export default function LoginPage() {
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
               <label className="block text-xs font-semibold uppercase tracking-wider text-slate-300 mb-1.5">
-                Staff Email
+                Email Address
               </label>
               <div className="relative">
                 <input
@@ -140,44 +149,62 @@ export default function LoginPage() {
                 <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
               ) : (
                 <>
-                  <span>Sign In to Terminal</span>
+                  <span>Sign In</span>
                   <ArrowRight className="w-4 h-4" />
                 </>
               )}
             </button>
           </form>
 
-          {/* Quick Demo Role Switcher */}
+          {/* Quick 1-Click Role Login for all 5 roles */}
           <div className="mt-8 pt-6 border-t border-slate-800">
             <p className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-3 text-center">
-              Quick 1-Click Role Login (Demo)
+              Quick 1-Click Role Login
             </p>
-            <div className="grid grid-cols-3 gap-2">
+            <div className="grid grid-cols-5 gap-1.5">
               <button
                 type="button"
                 onClick={() => handleQuickLogin('owner@aurex.com', 'AurexOwner@2026')}
-                className="px-2.5 py-2 rounded-lg bg-emerald-950/40 border border-emerald-700/50 hover:bg-emerald-900/60 text-emerald-300 text-xs font-medium transition text-center flex flex-col items-center justify-center gap-0.5"
+                className="p-2 rounded-lg bg-emerald-950/40 border border-emerald-700/50 hover:bg-emerald-900/60 text-emerald-300 text-xs font-medium transition text-center flex flex-col items-center justify-center"
               >
                 <span className="font-bold">Owner</span>
-                <span className="text-[10px] text-emerald-400/80">Full Access</span>
+                <span className="text-[9px] text-emerald-400/80">Full</span>
               </button>
 
               <button
                 type="button"
                 onClick={() => handleQuickLogin('manager@aurex.com', 'AurexManager@2026')}
-                className="px-2.5 py-2 rounded-lg bg-blue-950/40 border border-blue-700/50 hover:bg-blue-900/60 text-blue-300 text-xs font-medium transition text-center flex flex-col items-center justify-center gap-0.5"
+                className="p-2 rounded-lg bg-blue-950/40 border border-blue-700/50 hover:bg-blue-900/60 text-blue-300 text-xs font-medium transition text-center flex flex-col items-center justify-center"
               >
                 <span className="font-bold">Manager</span>
-                <span className="text-[10px] text-blue-400/80">Ops + Reports</span>
+                <span className="text-[9px] text-blue-400/80">Ops</span>
               </button>
 
               <button
                 type="button"
                 onClick={() => handleQuickLogin('receptionist@aurex.com', 'AurexRecp@2026')}
-                className="px-2.5 py-2 rounded-lg bg-slate-800/80 border border-slate-700 hover:bg-slate-700 text-slate-300 text-xs font-medium transition text-center flex flex-col items-center justify-center gap-0.5"
+                className="p-2 rounded-lg bg-amber-950/40 border border-amber-700/50 hover:bg-amber-900/60 text-amber-300 text-xs font-medium transition text-center flex flex-col items-center justify-center"
               >
-                <span className="font-bold">Reception</span>
-                <span className="text-[10px] text-slate-400">Front Desk</span>
+                <span className="font-bold">Recp</span>
+                <span className="text-[9px] text-amber-400/80">Front</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => handleQuickLogin('specialist@aurex.com', 'AurexSpec@2026')}
+                className="p-2 rounded-lg bg-teal-950/40 border border-teal-700/50 hover:bg-teal-900/60 text-teal-300 text-xs font-medium transition text-center flex flex-col items-center justify-center"
+              >
+                <span className="font-bold">Specialist</span>
+                <span className="text-[9px] text-teal-400/80">Doctor</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => handleQuickLogin('client@aurex.com', 'AurexClient@2026')}
+                className="p-2 rounded-lg bg-indigo-950/40 border border-indigo-700/50 hover:bg-indigo-900/60 text-indigo-300 text-xs font-medium transition text-center flex flex-col items-center justify-center"
+              >
+                <span className="font-bold">Client</span>
+                <span className="text-[9px] text-indigo-400/80">Portal</span>
               </button>
             </div>
           </div>
@@ -186,7 +213,7 @@ export default function LoginPage() {
         {/* Security Footer Notice */}
         <div className="mt-6 text-center text-xs text-slate-500 flex items-center justify-center gap-1.5">
           <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
-          <span>Strict Internal System • IP Logging & Session Isolation Active</span>
+          <span>AUREX System Terminal • Encrypted & Isolated Sessions Active</span>
         </div>
       </div>
     </div>

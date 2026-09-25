@@ -2,8 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
-import { generateInvoiceNumber } from '@/lib/utils';
-import { canViewRevenue } from '@/lib/rbac';
+import { generateInvoiceId } from '@/lib/invoiceId';
 
 export async function GET(req: NextRequest) {
   try {
@@ -25,10 +24,10 @@ export async function GET(req: NextRequest) {
         where,
         include: {
           client: {
-            select: { id: true, clientId: true, name: true, phone: true, email: true, status: true },
+            select: { id: true, clientId: true, name: true, phone: true, email: true, status: true, photo: true },
           },
           clientPackage: {
-            select: { id: true, name: true, serviceType: true, totalSessions: true, sessionsRemaining: true },
+            select: { id: true, name: true, serviceType: true, totalSessions: true, sessionsRemaining: true, packageAmount: true, amountPaid: true, balanceRemaining: true },
           },
         },
         orderBy: { paymentDate: 'desc' },
@@ -37,7 +36,7 @@ export async function GET(req: NextRequest) {
         where: { status: 'ACTIVE' },
         include: {
           client: {
-            select: { id: true, clientId: true, name: true, phone: true, email: true, status: true },
+            select: { id: true, clientId: true, name: true, phone: true, email: true, status: true, photo: true },
           },
           payments: {
             orderBy: { paymentDate: 'desc' },
@@ -46,6 +45,7 @@ export async function GET(req: NextRequest) {
         orderBy: { startDate: 'desc' },
       }),
       prisma.client.findMany({
+        where: { isDeleted: false },
         select: { id: true, clientId: true, name: true, phone: true, status: true },
         orderBy: { name: 'asc' },
       }),
@@ -70,7 +70,7 @@ export async function POST(req: NextRequest) {
     }
 
     const body = await req.json();
-    const { clientId, clientPackageId, amount, paymentMethod, notes, isRefund } = body;
+    const { clientId, clientPackageId, amount, paymentMethod, notes, isRefund, refundReason } = body;
 
     if (!clientId || amount === undefined) {
       return NextResponse.json(
@@ -79,15 +79,15 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const count = await prisma.payment.count();
-    const invoiceNumber = generateInvoiceNumber(count + 1);
-
+    // Auto-generate invoice number formatted as INV-AUR-YYYY-XXXX
+    const invoiceNumber = await generateInvoiceId();
     const paymentAmount = Number(amount);
+    const currentUserId = (session.user as any).id;
 
     const result = await prisma.$transaction(async (tx) => {
       // 1. If linked to a clientPackage, update balance remaining
-      let updatedPkg = null;
       let newBalance = 0;
+      let totalPackageAmount = paymentAmount;
 
       if (clientPackageId) {
         const pkg = await tx.clientPackage.findUnique({
@@ -95,21 +95,22 @@ export async function POST(req: NextRequest) {
         });
 
         if (pkg) {
+          totalPackageAmount = pkg.packageAmount || paymentAmount;
           if (isRefund) {
             newBalance = pkg.balanceRemaining + paymentAmount;
-            updatedPkg = await tx.clientPackage.update({
+            await tx.clientPackage.update({
               where: { id: clientPackageId },
               data: {
-                pricePaid: Math.max(0, pkg.pricePaid - paymentAmount),
+                amountPaid: Math.max(0, pkg.amountPaid - paymentAmount),
                 balanceRemaining: newBalance,
               },
             });
           } else {
             newBalance = Math.max(0, pkg.balanceRemaining - paymentAmount);
-            updatedPkg = await tx.clientPackage.update({
+            await tx.clientPackage.update({
               where: { id: clientPackageId },
               data: {
-                pricePaid: pkg.pricePaid + paymentAmount,
+                amountPaid: pkg.amountPaid + paymentAmount,
                 balanceRemaining: newBalance,
               },
             });
@@ -122,7 +123,8 @@ export async function POST(req: NextRequest) {
         data: {
           clientId,
           clientPackageId: clientPackageId || null,
-          amount: paymentAmount,
+          packageAmount: totalPackageAmount,
+          amountPaid: paymentAmount,
           balanceRemaining: newBalance,
           paymentDate: new Date(),
           paymentMethod: paymentMethod || 'UPI',
@@ -130,10 +132,28 @@ export async function POST(req: NextRequest) {
           status: newBalance <= 0 ? 'PAID' : 'PARTIAL',
           notes: notes || null,
           isRefund: Boolean(isRefund),
+          refundReason: refundReason || null,
+          createdByUserId: currentUserId || null,
         },
         include: {
           client: true,
           clientPackage: true,
+        },
+      });
+
+      // 3. Write Audit Log
+      await tx.auditLog.create({
+        data: {
+          userId: currentUserId || null,
+          action: isRefund ? 'REFUND_PAYMENT' : 'RECORD_PAYMENT',
+          entity: 'Payment',
+          entityId: payment.id,
+          details: JSON.stringify({
+            invoiceNumber,
+            amount: paymentAmount,
+            method: paymentMethod,
+            client: payment.client.name,
+          }),
         },
       });
 

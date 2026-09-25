@@ -3,7 +3,7 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
+  provider = "sqlite"
   url      = env("DATABASE_URL")
 }
 
@@ -12,9 +12,11 @@ model User {
   name         String
   email        String     @unique
   passwordHash String
-  role         String     @default("RECEPTIONIST") // OWNER, MANAGER, RECEPTIONIST
+  role         String     @default("RECEPTIONIST") // OWNER, MANAGER, RECEPTIONIST, SPECIALIST, CLIENT
   phone        String?
   active       Boolean    @default(true)
+  specialistId String?
+  clientId     String?
   createdAt    DateTime   @default(now())
   updatedAt    DateTime   @updatedAt
   
@@ -22,6 +24,7 @@ model User {
   notes        Note[]
   followUps    FollowUp[]
   attendances  Attendance[]
+  auditLogs    AuditLog[]
 }
 
 model Specialist {
@@ -33,6 +36,7 @@ model Specialist {
   bio            String?
   active         Boolean      @default(true)
   colorCode      String       @default("#10B981") // HEX color for calendar/dashboard
+  userId         String?      @unique
   createdAt      DateTime     @default(now())
   updatedAt      DateTime     @updatedAt
 
@@ -43,36 +47,42 @@ model Specialist {
 }
 
 model Client {
-  id                   String          @id @default(cuid())
-  clientId             String          @unique // e.g. AUR-2026-0001
-  name                 String
-  phone                String
-  email                String?
-  dob                  DateTime?
-  gender               String?         // Male, Female, Other
-  address              String?
-  emergencyContactName String?
+  id                    String          @id @default(cuid())
+  clientId              String          @unique // e.g. AUR-2026-0001
+  name                  String
+  phone                 String
+  email                 String?
+  dob                   DateTime?
+  gender                String?         // Male, Female, Other
+  address               String?
+  emergencyContact      String?
+  emergencyContactName  String?
+  emergencyPhone        String?
   emergencyContactPhone String?
-  registrationDate     DateTime        @default(now())
-  referralSource       String          @default("Walk-in") // Instagram, Facebook, WhatsApp, Website, Google, Referral, Walk-in, Other
-  status               String          @default("LEAD") // LEAD, CONSULTATION, ASSESSMENT_BOOKED, ACTIVE, INACTIVE, ON_HOLD, EXPIRED, COMPLETED
-  isDeleted            Boolean         @default(false)
-  deletedAt            DateTime?
-  
-  assignedSpecialistId String?
-  assignedSpecialist   Specialist?     @relation(fields: [assignedSpecialistId], references: [id])
-  
-  createdAt            DateTime        @default(now())
-  updatedAt            DateTime        @updatedAt
+  registrationDate      DateTime        @default(now())
+  referralSource        String          @default("Walk-in") // Instagram, Facebook, WhatsApp, Website, Google, Referral, Walk-in, Other
+  status                String          @default("ACTIVE") // LEAD, CONSULTATION, ASSESSMENT_BOOKED, ACTIVE, INACTIVE, ON_HOLD, EXPIRED, COMPLETED
+  assignedSpecialistId  String?
+  assignedSpecialist    Specialist?     @relation(fields: [assignedSpecialistId], references: [id])
+  photo                 String?
+  userId                String?         @unique
+  isDeleted             Boolean         @default(false)
+  deletedAt             DateTime?
+  createdAt             DateTime        @default(now())
+  updatedAt             DateTime        @updatedAt
 
   // Relations
-  packages             ClientPackage[]
-  bookings             Booking[]
-  attendances          Attendance[]
-  payments             Payment[]
-  assessments          Assessment[]
-  notes                Note[]
-  followUps            FollowUp[]
+  packages              ClientPackage[]
+  bookings              Booking[]
+  attendances           Attendance[]
+  payments              Payment[]
+  assessments           Assessment[]
+  notes                 Note[]
+  followUps             FollowUp[]
+  documents             Document[]
+  consents              Consent[]
+  packageFreezes        PackageFreeze[]
+  notifications         Notification[]
 }
 
 model Package {
@@ -90,26 +100,33 @@ model Package {
 }
 
 model ClientPackage {
-  id               String      @id @default(cuid())
-  clientId         String
-  client           Client      @relation(fields: [clientId], references: [id], onDelete: Cascade)
-  packageId        String?
-  package          Package?    @relation(fields: [packageId], references: [id])
-  name             String
-  serviceType      String      @default("SEMI_PRIVATE") // SEMI_PRIVATE, PREMIUM
-  totalSessions    Int         @default(12)
-  sessionsUsed     Int         @default(0)
-  sessionsRemaining Int        @default(12)
-  pricePaid        Float       @default(0.0)
-  balanceRemaining Float       @default(0.0)
-  startDate        DateTime    @default(now())
-  expiryDate       DateTime
-  status           String      @default("ACTIVE") // ACTIVE, EXPIRED, COMPLETED, ON_HOLD
-  createdAt        DateTime    @default(now())
-  updatedAt        DateTime    @updatedAt
+  id                String          @id @default(cuid())
+  clientId          String
+  client            Client          @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  packageId         String?
+  package           Package?        @relation(fields: [packageId], references: [id])
+  name              String
+  serviceType       String          @default("SEMI_PRIVATE") // SEMI_PRIVATE, PREMIUM, ASSESSMENT, CONSULTATION
+  totalSessions     Int             @default(12)
+  sessionsUsed      Int             @default(0)
+  sessionsRemaining Int             @default(12)
+  packageAmount     Float           @default(0.0)
+  amountPaid        Float           @default(0.0)
+  pricePaid         Float           @default(0.0)
+  balanceRemaining  Float           @default(0.0)
+  startDate         DateTime        @default(now())
+  expiryDate        DateTime
+  status            String          @default("ACTIVE") // ACTIVE, EXPIRED, COMPLETED, ON_HOLD, FROZEN
+  freezeStartDate   DateTime?
+  freezeEndDate     DateTime?
+  freezeReason      String?
+  expiryAdjustment  Int             @default(0) // Days added due to freeze
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
 
-  bookings         Booking[]
-  payments         Payment[]
+  bookings          Booking[]
+  payments          Payment[]
+  packageFreezes    PackageFreeze[]
 }
 
 model Session {
@@ -142,6 +159,7 @@ model Booking {
   clientPackage   ClientPackage? @relation(fields: [clientPackageId], references: [id])
   status          String         @default("CONFIRMED") // CONFIRMED, CANCELLED, RESCHEDULED, COMPLETED
   bookedAt        DateTime       @default(now())
+  bookedByUserId  String?
   createdAt       DateTime       @default(now())
   updatedAt       DateTime       @updatedAt
 
@@ -173,50 +191,60 @@ model Payment {
   client           Client         @relation(fields: [clientId], references: [id], onDelete: Cascade)
   clientPackageId  String?
   clientPackage    ClientPackage? @relation(fields: [clientPackageId], references: [id])
-  amount           Float
+  packageAmount    Float          @default(0.0)
+  amountPaid       Float          @default(0.0)
+  amount           Float          @default(0.0)
   balanceRemaining Float          @default(0.0)
   paymentDate      DateTime       @default(now())
   paymentMethod    String         @default("UPI") // UPI, BANK_TRANSFER, CARD, CASH
-  invoiceNumber    String         @unique // e.g. INV-AUR-0001
+  invoiceNumber    String         @unique // e.g. INV-AUR-2026-0001
   status           String         @default("PAID") // PAID, PARTIAL, PENDING, REFUNDED
   notes            String?
   isRefund         Boolean        @default(false)
+  refundReason     String?
+  createdByUserId  String?
   createdAt        DateTime       @default(now())
   updatedAt        DateTime       @updatedAt
 }
 
 model Assessment {
-  id                 String     @id @default(cuid())
+  id                 String      @id @default(cuid())
   clientId           String
-  client             Client     @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  client             Client      @relation(fields: [clientId], references: [id], onDelete: Cascade)
   specialistId       String?
   specialist         Specialist? @relation(fields: [specialistId], references: [id])
-  type               String     @default("INITIAL") // INITIAL, REASSESSMENT, PROGRESS_REVIEW
-  date               DateTime   @default(now())
+  type               String      @default("INITIAL") // INITIAL, REASSESSMENT, PROGRESS_REVIEW
+  assessmentDate     DateTime    @default(now())
+  date               DateTime    @default(now())
   
   // Structured Clinical Sections (stored as JSON string)
-  healthScreening    String?    // PAR-Q, medical flags, physician clearance
-  medicalHistory     String?    // Past injuries, spine/joints, surgeries, medications
-  goals              String?    // Rehab, posture, strength, endurance, metabolic
-  baselineMetrics    String?    // Height, weight, BMI, BP, resting HR, body fat %
-  functionalMovement String?    // FMS, mobility tests, posture, core stability
-  cardioStrength     String?    // Submax cardio, 1RM/5RM estimate, grip strength
-  clinicalNotes      String?    // Specialist findings, exercise prescription, precautions
+  healthScreening    String?     // PAR-Q, red flags, physician clearance
+  medicalHistory     String?     // Past injuries, spine/joints, surgeries, medications
+  goals              String?     // Rehab, posture, strength, endurance, metabolic
+  baselineMetrics    String?     // Height, weight, BMI, BP, resting HR, body fat %, waist/hip
+  functionalMovement String?     // FMS, mobility tests, posture, core stability
+  strengthAssessment String?     // McGill Big 3 (curl-up, side bridge, bird-dog), grip strength, push/pull
+  cardioStrength     String?     // Legacy / summary field
+  cardiovascularData String?     // Submax cardio, VO2 max estimate, resting HR, fitness category
+  clinicalNotes      String?     // Specialist findings, exercise prescription, precautions
   
-  createdAt          DateTime   @default(now())
-  updatedAt          DateTime   @updatedAt
+  createdAt          DateTime    @default(now())
+  updatedAt          DateTime    @updatedAt
 }
 
 model Lead {
   id                String      @id @default(cuid())
+  firstName         String?
+  lastName          String?
   name              String
   phone             String
   email             String?
   alternatePhone    String?
   gender            String?     @default("Male")
-  stage             String      @default("NEW_LEAD") // NEW_LEAD, CONTACTED, CONSULTATION, ASSESSMENT_BOOKED, ASSESSMENT_COMPLETED, PACKAGE_OFFERED, CONVERTED, ACTIVE, RENEWAL, LOST
-  convertibility    String?     @default("Warm") // Hot, Warm, Cold
-  source            String      @default("Instagram") // Instagram, Facebook, WhatsApp, Website, Google, Referral, Walk-in, Other
+  dob               DateTime?
+  stage             String      @default("NEW_LEAD") // NEW_LEAD, CONTACTED, CONSULTATION, ASSESSMENT_BOOKED, ASSESSMENT_COMPLETED, PACKAGE_OFFERED, JOINED, ACTIVE, RENEWAL, LOST
+  source            String      @default("Instagram") // INSTAGRAM, FACEBOOK, WHATSAPP, WEBSITE, GOOGLE, REFERRAL, WALK_IN, OTHER
+  convertibility    String?     @default("Warm") // HOT, WARM, COLD
   service           String?     @default("AUREX")
   trialDate         DateTime?
   scheduleFollowUp  DateTime?
@@ -242,6 +270,7 @@ model FollowUp {
   notes          String
   followUpDate   DateTime  @default(now())
   completed      Boolean   @default(false)
+  completedAt    DateTime?
   loggedByUserId String?
   loggedByUser   User?     @relation(fields: [loggedByUserId], references: [id])
   createdAt      DateTime  @default(now())
@@ -260,6 +289,50 @@ model Note {
   updatedAt DateTime @updatedAt
 }
 
+model Document {
+  id               String   @id @default(cuid())
+  clientId         String
+  client           Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  type             String   @default("MEDICAL_CLEARANCE") // MEDICAL_CLEARANCE, REFERRAL, CONSENT_FORM, PAR_Q, OTHER
+  fileName         String
+  filePath         String
+  fileSize         Int      @default(0) // bytes
+  uploadedAt       DateTime @default(now())
+  uploadedByUserId String?
+  accessPermission String   @default("STAFF_ONLY") // STAFF_ONLY, OWNER_ONLY
+  notes            String?
+  createdAt        DateTime @default(now())
+}
+
+model Consent {
+  id               String    @id @default(cuid())
+  clientId         String
+  client           Client    @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  consentVersion   String    @default("v1.0")
+  consentText      String
+  status           String    @default("SIGNED") // PENDING, ACKNOWLEDGED, SIGNED
+  acknowledgedAt   DateTime  @default(now())
+  acknowledgedBy   String?   // Staff who witnessed
+  ipAddress        String?
+  digitalSignature String?   // Base64 signature image or vector string
+  createdAt        DateTime  @default(now())
+}
+
+model PackageFreeze {
+  id               String        @id @default(cuid())
+  clientPackageId  String
+  clientPackage    ClientPackage @relation(fields: [clientPackageId], references: [id], onDelete: Cascade)
+  clientId         String
+  client           Client        @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  freezeStartDate  DateTime
+  freezeEndDate    DateTime?
+  reason           String?
+  daysAdded        Int           @default(0)
+  status           String        @default("ACTIVE") // ACTIVE, LIFTED
+  approvedByUserId String?
+  createdAt        DateTime      @default(now())
+}
+
 model Expense {
   id             String    @id @default(cuid())
   date           DateTime  @default(now())
@@ -269,4 +342,29 @@ model Expense {
   loggedByUserId String?
   createdAt      DateTime  @default(now())
   updatedAt      DateTime  @updatedAt
+}
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  userId    String?
+  user      User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  action    String   // e.g. "COMPLETE_SESSION", "RECORD_PAYMENT", "FREEZE_PACKAGE"
+  entity    String   // e.g. "Session", "Payment", "Client"
+  entityId  String?
+  details   String?  // JSON or text describing changes
+  ipAddress String?
+  createdAt DateTime @default(now())
+}
+
+model Notification {
+  id          String    @id @default(cuid())
+  clientId    String?
+  client      Client?   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  type        String    // BOOKING_CONFIRMATION, SESSION_REMINDER, EXPIRY_ALERT, RENEWAL_REMINDER
+  message     String
+  scheduledAt DateTime  @default(now())
+  sentAt      DateTime?
+  status      String    @default("SENT") // PENDING, SENT, FAILED
+  channel     String    @default("EMAIL") // EMAIL, SMS, WHATSAPP
+  createdAt   DateTime  @default(now())
 }

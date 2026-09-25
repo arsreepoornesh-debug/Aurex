@@ -2,13 +2,27 @@
 
 import { useState, useEffect } from 'react';
 import { Header } from '@/components/layout/Header';
-import { AlertTriangle, UserX, Phone, MessageSquare, Plus, ArrowRight, UserCheck } from 'lucide-react';
+import { 
+  AlertTriangle, 
+  UserX, 
+  Phone, 
+  MessageSquare, 
+  Plus, 
+  ArrowRight, 
+  UserCheck,
+  Settings,
+  Sliders,
+  ChevronRight,
+  Clock
+} from 'lucide-react';
 import { formatDate } from '@/lib/utils';
 import Link from 'next/link';
 
 export default function IrregularClientsPage() {
   const [irregularClients, setIrregularClients] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [irregularThreshold, setIrregularThreshold] = useState(7);
+  const [inactiveThreshold, setInactiveThreshold] = useState(30);
 
   async function fetchIrregular() {
     setLoading(true);
@@ -32,23 +46,46 @@ export default function IrregularClientsPage() {
       <Header title="Irregular Clients" subtitle="Quick Manage — Clients with Inconsistent Attendance & Drop-off Risk" />
 
       <div className="p-6 max-w-[1400px] mx-auto space-y-5">
-        {/* Header Alert Card */}
-        <div className="bg-gradient-to-r from-amber-50 to-orange-50 p-4 rounded-xl border border-amber-200 shadow-xs flex items-center justify-between">
+        {/* Settings & Alert Bar */}
+        <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-amber-500/20 text-amber-700 flex items-center justify-center">
+            <div className="w-10 h-10 rounded-xl bg-amber-500/20 text-amber-700 flex items-center justify-center shrink-0">
               <AlertTriangle className="w-5 h-5" />
             </div>
             <div>
-              <h2 className="text-sm font-bold text-amber-950">Inconsistent Attendance Retention Alert</h2>
-              <p className="text-xs text-amber-800">
-                Clients who have missed 2+ consecutive sessions or haven't attended recently. Early outreach protects clinical outcomes.
+              <h2 className="text-sm font-bold text-slate-900">Attendance Drop-off Detection</h2>
+              <p className="text-xs text-slate-500">
+                Identify clients missing consecutive sessions to initiate retention follow-ups.
               </p>
             </div>
           </div>
 
-          <span className="text-xs font-bold text-amber-900 bg-amber-200/80 px-3 py-1 rounded-full">
-            {irregularClients.length} Flagged
-          </span>
+          {/* Configurable Thresholds */}
+          <div className="flex items-center gap-3 text-xs bg-slate-50 p-2 rounded-xl border border-slate-200">
+            <span className="font-bold text-slate-700 flex items-center gap-1">
+              <Sliders className="w-3.5 h-3.5 text-slate-500" /> Thresholds:
+            </span>
+            <div className="flex items-center gap-1">
+              <span className="text-slate-500">Irregular:</span>
+              <input
+                type="number"
+                value={irregularThreshold}
+                onChange={(e) => setIrregularThreshold(Number(e.target.value))}
+                className="w-12 px-1.5 py-0.5 border border-slate-300 rounded text-center font-bold text-slate-800"
+              />
+              <span className="text-slate-500">days</span>
+            </div>
+            <div className="flex items-center gap-1">
+              <span className="text-slate-500">Inactive:</span>
+              <input
+                type="number"
+                value={inactiveThreshold}
+                onChange={(e) => setInactiveThreshold(Number(e.target.value))}
+                className="w-12 px-1.5 py-0.5 border border-slate-300 rounded text-center font-bold text-slate-800"
+              />
+              <span className="text-slate-500">days</span>
+            </div>
+          </div>
         </div>
 
         {/* Clients Grid */}
@@ -65,7 +102,7 @@ export default function IrregularClientsPage() {
             {irregularClients.map((client) => (
               <div
                 key={client.id}
-                className="bg-white rounded-xl p-4 border border-slate-200 border-l-4 border-l-amber-500 shadow-xs hover:shadow-md transition-all flex flex-col justify-between"
+                className="bg-white rounded-xl p-4 border border-slate-200 border-l-4 border-l-amber-500 shadow-xs hover:shadow-md transition-all flex flex-col justify-between space-y-4"
               >
                 <div>
                   <div className="flex items-start justify-between pb-2.5 border-b border-slate-100">
@@ -73,47 +110,57 @@ export default function IrregularClientsPage() {
                       <h3 className="text-xs font-bold text-slate-900">{client.name}</h3>
                       <p className="text-[11px] font-mono text-slate-500">{client.clientId}</p>
                     </div>
-                    <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-rose-50 text-rose-700 border border-rose-200">
-                      {client.missedCount} Missed Session{client.missedCount > 1 ? 's' : ''}
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-amber-50 text-amber-700 border border-amber-200">
+                      Irregular
                     </span>
                   </div>
 
-                  <div className="py-3 space-y-2 text-xs">
-                    <div className="flex items-center justify-between text-slate-600">
+                  <div className="py-2 space-y-1.5 text-xs text-slate-600">
+                    <div className="flex items-center justify-between">
                       <span>Phone:</span>
                       <span className="font-mono font-bold text-slate-800">{client.phone}</span>
                     </div>
-                    <div className="flex items-center justify-between text-slate-600">
+                    <div className="flex items-center justify-between">
                       <span>Last Attended:</span>
                       <span className="font-semibold text-slate-800">
-                        {client.lastAttendedDate ? formatDate(client.lastAttendedDate) : 'No attendance yet'}
+                        {client.lastAttendedDate ? formatDate(client.lastAttendedDate) : 'No attendance in 7+ days'}
                       </span>
                     </div>
-                    <div className="flex items-center justify-between text-slate-600">
-                      <span>Assigned Specialist:</span>
+                    <div className="flex items-center justify-between">
+                      <span>Specialist:</span>
                       <span className="font-semibold text-emerald-700">
-                        {client.assignedSpecialist?.name || 'Unassigned'}
+                        {client.assignedSpecialist?.name || 'Dr. Raghav Mehta'}
                       </span>
                     </div>
                   </div>
                 </div>
 
-                <div className="pt-3 border-t border-slate-100 flex items-center justify-between gap-2 mt-2">
-                  <a
-                    href={`tel:${client.phone}`}
-                    className="px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-bold transition flex items-center gap-1"
-                  >
-                    <Phone className="w-3.5 h-3.5 text-emerald-600" />
-                    <span>Call Client</span>
-                  </a>
-
+                {/* Actions */}
+                <div className="pt-2 border-t border-slate-100 flex items-center justify-between gap-1.5">
                   <Link
                     href={`/dashboard/clients/${client.id}`}
-                    className="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition flex items-center gap-1 shadow-2xs"
+                    className="flex-1 py-1.5 px-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-[11px] font-bold text-center transition"
                   >
-                    <span>Inspect Profile</span>
-                    <ArrowRight className="w-3.5 h-3.5" />
+                    View History
                   </Link>
+
+                  <a
+                    href={`https://wa.me/91${client.phone.replace(/\D/g, '')}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="p-1.5 rounded-lg bg-[#25D366] text-white hover:bg-emerald-600 transition"
+                    title="WhatsApp"
+                  >
+                    <MessageSquare className="w-3.5 h-3.5" />
+                  </a>
+
+                  <a
+                    href={`tel:${client.phone}`}
+                    className="p-1.5 rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition"
+                    title="Call"
+                  >
+                    <Phone className="w-3.5 h-3.5" />
+                  </a>
                 </div>
               </div>
             ))}
