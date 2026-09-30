@@ -6,8 +6,8 @@ console.log('==============================================');
 
 // 0. Ensure required env vars have safe fallbacks before Prisma initialises
 if (!process.env.DATABASE_URL) {
-  process.env.DATABASE_URL = 'file:./dev.db';
-  console.log('ℹ️  DATABASE_URL not set — defaulting to file:./dev.db (SQLite)');
+  console.error('❌ FATAL: DATABASE_URL is not set. Please set it in Railway Variables.');
+  process.exit(1);
 }
 if (!process.env.NEXTAUTH_URL) {
   // Railway injects RAILWAY_PUBLIC_DOMAIN automatically
@@ -20,7 +20,8 @@ if (!process.env.NEXTAUTH_SECRET) {
   console.log('ℹ️  NEXTAUTH_SECRET not set — using built-in default');
 }
 
-console.log(`✅ Environment ready: DATABASE_URL=${process.env.DATABASE_URL}`);
+console.log(`✅ Environment ready: DATABASE_URL=${process.env.DATABASE_URL.substring(0, 30)}...`);
+
 
 // 1. Sync DB Schema (SQLite local / PostgreSQL prod via DATABASE_URL)
 try {
