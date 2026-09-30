@@ -4,11 +4,29 @@ console.log('==============================================');
 console.log('🚀 Starting AUREX CMS on Railway...');
 console.log('==============================================');
 
-// 1. Sync DB Schema with PostgreSQL
+// 0. Ensure required env vars have safe fallbacks before Prisma initialises
+if (!process.env.DATABASE_URL) {
+  process.env.DATABASE_URL = 'file:./dev.db';
+  console.log('ℹ️  DATABASE_URL not set — defaulting to file:./dev.db (SQLite)');
+}
+if (!process.env.NEXTAUTH_URL) {
+  // Railway injects RAILWAY_PUBLIC_DOMAIN automatically
+  const domain = process.env.RAILWAY_PUBLIC_DOMAIN || process.env.RAILWAY_STATIC_URL;
+  process.env.NEXTAUTH_URL = domain ? `https://${domain}` : 'http://localhost:3000';
+  console.log(`ℹ️  NEXTAUTH_URL not set — defaulting to ${process.env.NEXTAUTH_URL}`);
+}
+if (!process.env.NEXTAUTH_SECRET) {
+  process.env.NEXTAUTH_SECRET = 'aurex-clinical-exercise-super-secret-key-2026';
+  console.log('ℹ️  NEXTAUTH_SECRET not set — using built-in default');
+}
+
+console.log(`✅ Environment ready: DATABASE_URL=${process.env.DATABASE_URL}`);
+
+// 1. Sync DB Schema (SQLite local / PostgreSQL prod via DATABASE_URL)
 try {
-  console.log('📦 Pushing database schema to PostgreSQL...');
+  console.log('📦 Pushing database schema...');
   execSync('npx prisma db push --accept-data-loss', { stdio: 'inherit' });
-  console.log('✅ PostgreSQL Schema synchronized.');
+  console.log('✅ Database schema synchronized.');
 } catch (err) {
   console.error('⚠️ Note on schema push:', err.message);
 }
