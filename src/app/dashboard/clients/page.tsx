@@ -54,6 +54,8 @@ export default function ClientsPage() {
     referralSource: 'Doctor Referral',
     status: 'ACTIVE',
     assignedSpecialistId: '',
+    category: 'SEMI_PRIVATE',
+    slotBookingDate: '',
   });
 
   function showMessage(type: 'success' | 'error', message: string) {
@@ -108,6 +110,8 @@ export default function ClientsPage() {
           referralSource: 'Doctor Referral',
           status: 'ACTIVE',
           assignedSpecialistId: '',
+          category: 'SEMI_PRIVATE',
+          slotBookingDate: '',
         });
         loadData();
         showMessage('success', 'Client registered successfully!');
@@ -810,6 +814,52 @@ export default function ClientsPage() {
                     ))}
                   </select>
                 </div>
+              </div>
+
+              {/* Client Category — Semi-Private / Premium / Luxury */}
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">Client Category *</label>
+                <div className="grid grid-cols-3 gap-2">
+                  {[
+                    { value: 'SEMI_PRIVATE', label: 'Semi-Private', price: '₹12,000', color: 'purple' },
+                    { value: 'PREMIUM', label: 'Premium 1:1', price: '₹12,000', color: 'amber' },
+                    { value: 'LUXURY', label: 'Luxury', price: '₹46,000', color: 'rose' },
+                  ].map((cat) => (
+                    <button
+                      key={cat.value}
+                      type="button"
+                      onClick={() => setClientForm({ ...clientForm, category: cat.value })}
+                      className={`p-2.5 rounded-lg border-2 text-left transition-all ${
+                        clientForm.category === cat.value
+                          ? cat.color === 'purple'
+                            ? 'border-purple-500 bg-purple-50'
+                            : cat.color === 'amber'
+                            ? 'border-amber-500 bg-amber-50'
+                            : 'border-rose-500 bg-rose-50'
+                          : 'border-slate-200 bg-white hover:border-slate-300'
+                      }`}
+                    >
+                      <div className={`text-[10px] font-black uppercase tracking-wide ${
+                        clientForm.category === cat.value
+                          ? cat.color === 'purple' ? 'text-purple-700' : cat.color === 'amber' ? 'text-amber-700' : 'text-rose-700'
+                          : 'text-slate-500'
+                      }`}>{cat.label}</div>
+                      <div className="text-xs font-bold text-slate-900 mt-0.5">{cat.price}</div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Slot Booking Date */}
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">Slot Start Date</label>
+                <input
+                  type="date"
+                  value={clientForm.slotBookingDate}
+                  onChange={(e) => setClientForm({ ...clientForm, slotBookingDate: e.target.value })}
+                  className="w-full bg-slate-50 border border-slate-300 rounded p-2 text-xs text-slate-900 focus:bg-white focus:border-blue-500 outline-none"
+                />
+                <p className="text-[10px] text-slate-400 mt-0.5">Select when the client's slot booking begins</p>
               </div>
 
               <div>

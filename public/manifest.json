@@ -1,0 +1,21 @@
+﻿{
+  "name": "AUREX Clinical Management",
+  "short_name": "AUREX",
+  "description": "Clinical Exercise Management System",
+  "start_url": "/dashboard",
+  "display": "standalone",
+  "background_color": "#0A0F1D",
+  "theme_color": "#10B981",
+  "orientation": "portrait-primary",
+  "scope": "/",
+  "icons": [
+    { "src": "/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },
+    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ],
+  "shortcuts": [
+    { "name": "Dashboard", "url": "/dashboard" },
+    { "name": "Clients", "url": "/dashboard/clients" },
+    { "name": "Slot Booking", "url": "/dashboard/slot-booking" },
+    { "name": "Packages", "url": "/dashboard/packages" }
+  ]
+}

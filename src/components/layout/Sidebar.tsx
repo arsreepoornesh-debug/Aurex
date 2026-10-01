@@ -28,6 +28,7 @@ import {
   ChevronDown,
   CreditCard,
   User,
+  CalendarCheck,
 } from 'lucide-react';
 import { canViewReports } from '@/lib/rbac';
 
@@ -136,6 +137,12 @@ export function Sidebar() {
       name: 'All Clients (360°)',
       href: '/dashboard/clients',
       icon: Users,
+      allowed: true,
+    },
+    {
+      name: 'Slot Booking',
+      href: '/dashboard/slot-booking',
+      icon: CalendarCheck,
       allowed: true,
     },
     {

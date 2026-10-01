@@ -83,6 +83,8 @@ export async function POST(req: NextRequest) {
       referralSource,
       status,
       assignedSpecialistId,
+      category,
+      slotBookingDate,
     } = body;
 
     if (!name || !phone) {
@@ -107,6 +109,8 @@ export async function POST(req: NextRequest) {
         referralSource: referralSource || 'Walk-in',
         status: status || 'ACTIVE',
         assignedSpecialistId: assignedSpecialistId || null,
+        category: category || 'SEMI_PRIVATE',
+        slotBookingDate: slotBookingDate ? new Date(slotBookingDate) : null,
       },
       include: {
         assignedSpecialist: true,
