@@ -4,24 +4,9 @@ import bcrypt from 'bcryptjs';
 const prisma = new PrismaClient();
 
 async function main() {
-  console.log('🧹 Wiping all transactional & client data for fresh start...');
+  console.log('🔄 Checking system staff accounts and package catalog...');
 
-  // 1. Delete all transactional data
-  await prisma.attendance.deleteMany({});
-  await prisma.booking.deleteMany({});
-  await prisma.session.deleteMany({});
-  await prisma.payment.deleteMany({});
-  await prisma.assessment.deleteMany({});
-  await prisma.note.deleteMany({});
-  await prisma.followUp.deleteMany({});
-  await prisma.clientPackage.deleteMany({});
-  await prisma.client.deleteMany({});
-  await prisma.lead.deleteMany({});
-  await prisma.expense.deleteMany({});
-
-  console.log('✅ Wiped all Clients, Bookings, Sessions, Payments, Leads, Assessments, and Expenses.');
-
-  // 2. Ensure RBAC Staff Accounts Exist
+  // 1. Ensure RBAC Staff Accounts Exist (Only 3: Owner, Manager, Receptionist)
   const passwordOwner = await bcrypt.hash('AurexOwner@2026', 10);
   const passwordManager = await bcrypt.hash('AurexManager@2026', 10);
   const passwordReceptionist = await bcrypt.hash('AurexRecp@2026', 10);
@@ -68,51 +53,52 @@ async function main() {
     },
   });
 
-  console.log('✅ Verified Staff Accounts (Owner, Manager, Receptionist)');
+  console.log('✅ Verified 3 Staff Accounts (Owner, Manager, Receptionist)');
 
-  // 3. Ensure Master Package Catalog exists
-  const existingPkgs = await prisma.package.count();
-  if (existingPkgs === 0) {
-    await prisma.package.createMany({
-      data: [
-        {
-          name: 'Semi-Private Clinical Package (12 Sessions)',
-          serviceType: 'SEMI_PRIVATE',
-          sessionCount: 12,
-          price: 24000,
-          validityDays: 60,
-          active: true,
-        },
-        {
-          name: 'Semi-Private Clinical Package (24 Sessions)',
-          serviceType: 'SEMI_PRIVATE',
-          sessionCount: 24,
-          price: 42000,
-          validityDays: 120,
-          active: true,
-        },
-        {
-          name: 'Premium 1:1 Medical Fitness (12 Sessions)',
-          serviceType: 'PREMIUM',
-          sessionCount: 12,
-          price: 48000,
-          validityDays: 60,
-          active: true,
-        },
-        {
-          name: 'Initial Clinical Assessment & Biomechanical Screening',
-          serviceType: 'ASSESSMENT',
-          sessionCount: 1,
-          price: 3500,
-          validityDays: 30,
-          active: true,
-        },
-      ],
+  // 2. Ensure Master Package Catalog exists with correct 3 Tiers
+  const semiPkg = await prisma.package.findFirst({ where: { serviceType: 'SEMI_PRIVATE' } });
+  if (!semiPkg) {
+    await prisma.package.create({
+      data: {
+        name: 'Semi-Private Clinical Package (1:4)',
+        serviceType: 'SEMI_PRIVATE',
+        sessionCount: 12,
+        price: 12000,
+        validityDays: 60,
+        active: true,
+      },
     });
-    console.log('✅ Created Master Package Catalog');
   }
 
-  // 4. Ensure Specialists exist
+  const premPkg = await prisma.package.findFirst({ where: { serviceType: 'PREMIUM' } });
+  if (!premPkg) {
+    await prisma.package.create({
+      data: {
+        name: 'Premium 1:1 Medical Fitness',
+        serviceType: 'PREMIUM',
+        sessionCount: 12,
+        price: 12000,
+        validityDays: 60,
+        active: true,
+      },
+    });
+  }
+
+  const luxPkg = await prisma.package.findFirst({ where: { serviceType: 'LUXURY' } });
+  if (!luxPkg) {
+    await prisma.package.create({
+      data: {
+        name: 'Luxury Concierge Rehab & Wellness',
+        serviceType: 'LUXURY',
+        sessionCount: 12,
+        price: 46000,
+        validityDays: 60,
+        active: true,
+      },
+    });
+  }
+
+  // 3. Ensure Specialists exist
   const existingSpecs = await prisma.specialist.count();
   if (existingSpecs === 0) {
     await prisma.specialist.createMany({
@@ -146,15 +132,14 @@ async function main() {
         },
       ],
     });
-    console.log('✅ Created Specialists');
   }
 
-  console.log('✨ Fresh database ready with 0 clients, 0 leads, 0 bookings, 0 payments!');
+  console.log('✅ System initialization complete.');
 }
 
 main()
   .catch((e) => {
-    console.error('❌ Error during database clean:', e);
+    console.error('❌ Error during system verification:', e);
     process.exit(1);
   })
   .finally(async () => {

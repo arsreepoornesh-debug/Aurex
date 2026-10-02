@@ -2,20 +2,20 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { Sparkles, PlusCircle, X, Users, Calendar, ArrowRight } from 'lucide-react';
+import { Crown, PlusCircle, X, Users, Calendar, ArrowRight } from 'lucide-react';
 import { formatCurrency, formatDate } from '@/lib/utils';
 import { Header } from '@/components/layout/Header';
 
-export default function PremiumPackagesPage() {
+export default function LuxuryPackagesPage() {
   const [packages, setPackages] = useState<any[]>([]);
   const [clientPackages, setClientPackages] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [showAddModal, setShowAddModal] = useState(false);
   const [form, setForm] = useState({
-    name: 'Premium 1:1 Medical Fitness (12 Sessions)',
-    serviceType: 'PREMIUM',
+    name: 'Luxury Concierge Rehab & Wellness (12 Sessions)',
+    serviceType: 'LUXURY',
     sessionCount: 12,
-    price: 12000,
+    price: 46000,
     validityDays: 60,
   });
 
@@ -26,8 +26,8 @@ export default function PremiumPackagesPage() {
       const data = await res.json();
       const allPkgs = data.packages || (Array.isArray(data) ? data : []);
       const allClientPkgs = data.clientPackages || [];
-      setPackages(allPkgs.filter((p: any) => p.serviceType === 'PREMIUM'));
-      setClientPackages(allClientPkgs.filter((cp: any) => cp.serviceType === 'PREMIUM'));
+      setPackages(allPkgs.filter((p: any) => p.serviceType === 'LUXURY'));
+      setClientPackages(allClientPkgs.filter((cp: any) => cp.serviceType === 'LUXURY'));
     } catch (err) {
       console.error(err);
     } finally {
@@ -61,23 +61,23 @@ export default function PremiumPackagesPage() {
   return (
     <div className="min-h-screen bg-slate-50">
       <Header
-        title="Premium Packages (1:1 Medical Fitness)"
-        subtitle="Catalog and enrolled clients for 1:1 Specialist-Led Clinical Exercise (₹12,000 / 12 Sessions)"
+        title="Luxury Concierge Packages"
+        subtitle="Master price book and active clients for Luxury Concierge Rehabilitation (₹46,000 / 12 Sessions)"
       />
 
       <div className="p-6 space-y-6 max-w-7xl mx-auto">
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
           <div>
             <h2 className="text-base font-extrabold text-slate-900 tracking-tight flex items-center gap-2">
-              <Sparkles className="w-5 h-5 text-amber-500" />
-              Master Catalog – Premium 1:1 (₹12,000)
+              <Crown className="w-5 h-5 text-rose-600" />
+              Master Catalog – Luxury Concierge (₹46,000)
             </h2>
-            <p className="text-xs text-slate-500">Dedicated 1:1 specialist supervision and prescription</p>
+            <p className="text-xs text-slate-500">Premium concierge wellness, recovery & VIP active rehab</p>
           </div>
 
           <button
             onClick={() => setShowAddModal(true)}
-            className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-white text-xs font-bold shadow-sm transition"
+            className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold shadow-sm transition"
           >
             <PlusCircle className="w-4 h-4" />
             <span>+ Add Package Tier</span>
@@ -88,14 +88,14 @@ export default function PremiumPackagesPage() {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           {packages.length === 0 ? (
             <div className="col-span-3 py-8 text-center text-slate-400 text-xs font-medium bg-white rounded-2xl border border-dashed border-slate-200">
-              No packages defined. Click + Add Package Tier to create one.
+              No luxury packages defined. Click + Add Package Tier to create one.
             </div>
           ) : (
             packages.map((pkg) => (
-              <div key={pkg.id} className="p-5 rounded-2xl border border-amber-200 bg-white shadow-sm hover:shadow-md transition">
+              <div key={pkg.id} className="p-5 rounded-2xl border border-rose-200 bg-white shadow-sm hover:shadow-md transition">
                 <div className="flex justify-between items-start mb-2">
                   <h4 className="font-extrabold text-slate-900 text-sm">{pkg.name}</h4>
-                  <span className="text-xs font-mono font-black text-amber-700 bg-amber-50 px-2.5 py-1 rounded-lg border border-amber-200">
+                  <span className="text-xs font-mono font-black text-rose-700 bg-rose-50 px-2.5 py-1 rounded-lg border border-rose-200">
                     {formatCurrency(pkg.price)}
                   </span>
                 </div>
@@ -104,21 +104,21 @@ export default function PremiumPackagesPage() {
                   <span>•</span>
                   <span>{pkg.validityDays} Days Validity</span>
                   <span>•</span>
-                  <span className="text-amber-600 font-bold">1:1 Dedicated</span>
+                  <span className="text-rose-600 font-bold">Luxury Concierge</span>
                 </div>
               </div>
             ))
           )}
         </div>
 
-        {/* Enrolled Clients in Premium */}
+        {/* Enrolled Clients in Luxury */}
         <div className="bg-white rounded-2xl border border-slate-200/80 overflow-hidden shadow-sm">
-          <div className="px-6 py-4 bg-amber-50/40 border-b border-amber-100 flex items-center justify-between">
+          <div className="px-6 py-4 bg-rose-50/40 border-b border-rose-100 flex items-center justify-between">
             <div>
-              <h3 className="text-sm font-extrabold text-amber-950">Active Clients Enrolled in Premium 1:1</h3>
-              <p className="text-xs text-amber-700">Track remaining sessions and due amounts</p>
+              <h3 className="text-sm font-extrabold text-rose-950">Active Clients Enrolled in Luxury Concierge</h3>
+              <p className="text-xs text-rose-700">Track remaining sessions and due amounts</p>
             </div>
-            <span className="text-xs font-bold text-amber-800 bg-amber-100 px-3 py-1 rounded-full">
+            <span className="text-xs font-bold text-rose-800 bg-rose-100 px-3 py-1 rounded-full">
               {clientPackages.length} Clients
             </span>
           </div>
@@ -140,14 +140,14 @@ export default function PremiumPackagesPage() {
                 {clientPackages.length === 0 ? (
                   <tr>
                     <td colSpan={7} className="py-10 text-center text-slate-400">
-                      No clients currently enrolled in Premium 1:1.
+                      No clients currently enrolled in Luxury Concierge.
                     </td>
                   </tr>
                 ) : (
                   clientPackages.map((cp) => (
                     <tr key={cp.id} className="hover:bg-slate-50 transition">
                       <td className="py-3.5 px-4 font-bold text-slate-900">
-                        <Link href={`/dashboard/clients/${cp.clientId}`} className="hover:text-amber-600 transition">
+                        <Link href={`/dashboard/clients/${cp.clientId}`} className="hover:text-rose-600 transition">
                           {cp.client?.name}
                         </Link>
                         <span className="text-[10px] text-slate-400 font-mono block">{cp.client?.clientId}</span>
@@ -156,7 +156,7 @@ export default function PremiumPackagesPage() {
                       <td className="py-3.5 px-4 text-center font-bold text-slate-700">
                         {cp.sessionsRemaining} / {cp.totalSessions}
                       </td>
-                      <td className="py-3.5 px-4 text-right font-bold text-slate-700">{formatCurrency(cp.packageAmount || 12000)}</td>
+                      <td className="py-3.5 px-4 text-right font-bold text-slate-700">{formatCurrency(cp.packageAmount || 46000)}</td>
                       <td className="py-3.5 px-4 text-right font-bold">
                         {cp.balanceRemaining > 0 ? (
                           <span className="text-rose-600 font-black">{formatCurrency(cp.balanceRemaining)}</span>
@@ -168,7 +168,7 @@ export default function PremiumPackagesPage() {
                       <td className="py-3.5 px-4 text-center">
                         <Link
                           href={`/dashboard/payments`}
-                          className="px-3 py-1 rounded bg-amber-500 hover:bg-amber-600 text-white font-bold text-xs transition"
+                          className="px-3 py-1 rounded bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs transition"
                         >
                           View Billing
                         </Link>
@@ -187,8 +187,8 @@ export default function PremiumPackagesPage() {
           <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-md overflow-hidden p-6 animate-in fade-in zoom-in-95">
             <div className="flex items-center justify-between pb-3 border-b border-slate-100">
               <span className="font-extrabold text-sm text-slate-900 flex items-center gap-2">
-                <Sparkles className="w-4 h-4 text-amber-500" />
-                Add Premium 1:1 Package
+                <Crown className="w-4 h-4 text-rose-600" />
+                Add Luxury Concierge Package
               </span>
               <button onClick={() => setShowAddModal(false)} className="text-slate-400 hover:text-slate-700">
                 <X className="w-4 h-4" />
@@ -203,7 +203,7 @@ export default function PremiumPackagesPage() {
                   required
                   value={form.name}
                   onChange={(e) => setForm({ ...form, name: e.target.value })}
-                  className="w-full bg-slate-50 border border-slate-300 rounded-xl p-2.5 text-xs text-slate-900 focus:bg-white focus:border-amber-500 outline-none"
+                  className="w-full bg-slate-50 border border-slate-300 rounded-xl p-2.5 text-xs text-slate-900 focus:bg-white focus:border-rose-500 outline-none"
                 />
               </div>
 
@@ -215,7 +215,7 @@ export default function PremiumPackagesPage() {
                     required
                     value={form.sessionCount}
                     onChange={(e) => setForm({ ...form, sessionCount: Number(e.target.value) })}
-                    className="w-full bg-slate-50 border border-slate-300 rounded-xl p-2.5 text-xs text-slate-900 focus:bg-white focus:border-amber-500 outline-none"
+                    className="w-full bg-slate-50 border border-slate-300 rounded-xl p-2.5 text-xs text-slate-900 focus:bg-white focus:border-rose-500 outline-none"
                   />
                 </div>
                 <div>
@@ -225,7 +225,7 @@ export default function PremiumPackagesPage() {
                     required
                     value={form.price}
                     onChange={(e) => setForm({ ...form, price: Number(e.target.value) })}
-                    className="w-full bg-slate-50 border border-slate-300 rounded-xl p-2.5 text-xs text-slate-900 focus:bg-white focus:border-amber-500 outline-none font-bold text-amber-700"
+                    className="w-full bg-slate-50 border border-slate-300 rounded-xl p-2.5 text-xs text-slate-900 focus:bg-white focus:border-rose-500 outline-none font-bold text-rose-700"
                   />
                 </div>
               </div>
@@ -237,7 +237,7 @@ export default function PremiumPackagesPage() {
                   required
                   value={form.validityDays}
                   onChange={(e) => setForm({ ...form, validityDays: Number(e.target.value) })}
-                  className="w-full bg-slate-50 border border-slate-300 rounded-xl p-2.5 text-xs text-slate-900 focus:bg-white focus:border-amber-500 outline-none"
+                  className="w-full bg-slate-50 border border-slate-300 rounded-xl p-2.5 text-xs text-slate-900 focus:bg-white focus:border-rose-500 outline-none"
                 />
               </div>
 
@@ -251,7 +251,7 @@ export default function PremiumPackagesPage() {
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2 rounded-xl bg-amber-500 hover:bg-amber-600 text-white text-xs font-bold shadow transition"
+                  className="px-5 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold shadow transition"
                 >
                   Save Package
                 </button>

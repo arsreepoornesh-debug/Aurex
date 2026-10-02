@@ -12,14 +12,8 @@ export default function LoginPage() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
-  async function handleLoginSuccess(userEmail: string) {
-    if (userEmail.includes('specialist')) {
-      router.push('/specialist');
-    } else if (userEmail.includes('client')) {
-      router.push('/portal');
-    } else {
-      router.push('/dashboard');
-    }
+  async function handleLoginSuccess() {
+    router.push('/dashboard');
     router.refresh();
   }
 
@@ -39,7 +33,7 @@ export default function LoginPage() {
         setError(res.error);
         setLoading(false);
       } else {
-        await handleLoginSuccess(email.toLowerCase());
+        await handleLoginSuccess();
       }
     } catch (err) {
       setError('An unexpected error occurred. Please try again.');
@@ -62,18 +56,17 @@ export default function LoginPage() {
         setError(res.error);
         setLoading(false);
       } else {
-        await handleLoginSuccess(userEmail.toLowerCase());
+        await handleLoginSuccess();
       }
     });
   }
 
   return (
     <div className="min-h-screen bg-[#070B14] flex flex-col justify-center items-center p-4 relative overflow-hidden">
-      {/* Background Decorative Glow */}
+      {/* Background Glow */}
       <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-emerald-500/10 rounded-full blur-3xl pointer-events-none" />
       <div className="absolute bottom-10 right-10 w-96 h-96 bg-blue-500/10 rounded-full blur-3xl pointer-events-none" />
 
-      {/* Main Container */}
       <div className="w-full max-w-lg z-10">
         {/* Brand Header */}
         <div className="text-center mb-6">
@@ -93,7 +86,7 @@ export default function LoginPage() {
           <div className="flex items-center justify-between border-b border-slate-800 pb-4 mb-6">
             <div>
               <h2 className="text-lg font-bold text-white">System Sign In</h2>
-              <p className="text-xs text-slate-400">Strict Role-Based Access Control Enforced</p>
+              <p className="text-xs text-slate-400">Authorized Roles: Owner, Manager, Receptionist</p>
             </div>
             <ShieldCheck className="w-5 h-5 text-emerald-400" />
           </div>
@@ -156,55 +149,37 @@ export default function LoginPage() {
             </button>
           </form>
 
-          {/* Quick 1-Click Role Login for all 5 roles */}
+          {/* Quick 1-Click Role Login for 3 Authorized Roles */}
           <div className="mt-8 pt-6 border-t border-slate-800">
             <p className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-3 text-center">
-              Quick 1-Click Role Login
+              Authorized Credentials (3 System Roles)
             </p>
-            <div className="grid grid-cols-5 gap-1.5">
+            <div className="grid grid-cols-3 gap-2">
               <button
                 type="button"
                 onClick={() => handleQuickLogin('owner@aurex.com', 'AurexOwner@2026')}
-                className="p-2 rounded-lg bg-emerald-950/40 border border-emerald-700/50 hover:bg-emerald-900/60 text-emerald-300 text-xs font-medium transition text-center flex flex-col items-center justify-center"
+                className="p-2.5 rounded-xl bg-emerald-950/40 border border-emerald-700/50 hover:bg-emerald-900/60 text-emerald-300 text-xs font-medium transition text-center flex flex-col items-center justify-center"
               >
                 <span className="font-bold">Owner</span>
-                <span className="text-[9px] text-emerald-400/80">Full</span>
+                <span className="text-[10px] text-emerald-400/80">Full Control</span>
               </button>
 
               <button
                 type="button"
                 onClick={() => handleQuickLogin('manager@aurex.com', 'AurexManager@2026')}
-                className="p-2 rounded-lg bg-blue-950/40 border border-blue-700/50 hover:bg-blue-900/60 text-blue-300 text-xs font-medium transition text-center flex flex-col items-center justify-center"
+                className="p-2.5 rounded-xl bg-blue-950/40 border border-blue-700/50 hover:bg-blue-900/60 text-blue-300 text-xs font-medium transition text-center flex flex-col items-center justify-center"
               >
                 <span className="font-bold">Manager</span>
-                <span className="text-[9px] text-blue-400/80">Ops</span>
+                <span className="text-[10px] text-blue-400/80">Operations</span>
               </button>
 
               <button
                 type="button"
                 onClick={() => handleQuickLogin('receptionist@aurex.com', 'AurexRecp@2026')}
-                className="p-2 rounded-lg bg-amber-950/40 border border-amber-700/50 hover:bg-amber-900/60 text-amber-300 text-xs font-medium transition text-center flex flex-col items-center justify-center"
+                className="p-2.5 rounded-xl bg-amber-950/40 border border-amber-700/50 hover:bg-amber-900/60 text-amber-300 text-xs font-medium transition text-center flex flex-col items-center justify-center"
               >
-                <span className="font-bold">Recp</span>
-                <span className="text-[9px] text-amber-400/80">Front</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => handleQuickLogin('specialist@aurex.com', 'AurexSpec@2026')}
-                className="p-2 rounded-lg bg-teal-950/40 border border-teal-700/50 hover:bg-teal-900/60 text-teal-300 text-xs font-medium transition text-center flex flex-col items-center justify-center"
-              >
-                <span className="font-bold">Specialist</span>
-                <span className="text-[9px] text-teal-400/80">Doctor</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => handleQuickLogin('client@aurex.com', 'AurexClient@2026')}
-                className="p-2 rounded-lg bg-indigo-950/40 border border-indigo-700/50 hover:bg-indigo-900/60 text-indigo-300 text-xs font-medium transition text-center flex flex-col items-center justify-center"
-              >
-                <span className="font-bold">Client</span>
-                <span className="text-[9px] text-indigo-400/80">Portal</span>
+                <span className="font-bold">Receptionist</span>
+                <span className="text-[10px] text-amber-400/80">Front Desk</span>
               </button>
             </div>
           </div>

@@ -29,6 +29,8 @@ import {
   CreditCard,
   User,
   CalendarCheck,
+  ShieldCheck,
+  Settings
 } from 'lucide-react';
 import { canViewReports } from '@/lib/rbac';
 
@@ -37,12 +39,10 @@ export function Sidebar() {
   const { data: session } = useSession();
   const userRole = (session?.user as any)?.role || 'RECEPTIONIST';
 
-  // Collapsible state
   const [collapsed, setCollapsed] = useState(false);
-  const [showClinicalMenu, setShowClinicalMenu] = useState(false);
+  const [showQuickMenu, setShowQuickMenu] = useState(true);
   const [counts, setCounts] = useState<Record<string, number>>({});
 
-  // Fetch live counts for Quick Manage badges
   useEffect(() => {
     async function loadCounts() {
       try {
@@ -58,7 +58,54 @@ export function Sidebar() {
     loadCounts();
   }, [pathname]);
 
-  // Exact 9 Quick Manage Items in order
+  // Primary Clinical Navigation (Always visible and navigable)
+  const primaryNavItems = [
+    {
+      name: 'AUREX Dashboard',
+      href: '/dashboard',
+      icon: LayoutDashboard,
+      exact: true,
+    },
+    {
+      name: 'All Clients (360°)',
+      href: '/dashboard/clients',
+      icon: Users,
+    },
+    {
+      name: 'Billing & Payments',
+      href: '/dashboard/payments',
+      icon: CreditCard,
+      badge: counts.pendingPayments ? String(counts.pendingPayments) : undefined,
+      badgeColor: 'bg-rose-500/20 text-rose-400 border-rose-500/30',
+    },
+    {
+      name: 'Clinical Packages',
+      href: '/dashboard/packages',
+      icon: Package,
+    },
+    {
+      name: 'Slot Booking',
+      href: '/dashboard/slot-booking',
+      icon: CalendarCheck,
+    },
+    {
+      name: 'Today Schedule',
+      href: '/dashboard/bookings',
+      icon: CalendarDays,
+    },
+    {
+      name: 'Attendance',
+      href: '/dashboard/attendance',
+      icon: ClipboardList,
+    },
+    {
+      name: 'Clinical Assessments',
+      href: '/dashboard/assessments',
+      icon: FileHeart,
+    },
+  ];
+
+  // Quick Manage Sub-items
   const quickManageItems = [
     {
       id: 'followups',
@@ -75,14 +122,6 @@ export function Sidebar() {
       icon: Clock,
       badge: counts.pendingLeads ? String(counts.pendingLeads) : undefined,
       badgeColor: 'bg-amber-500/20 text-amber-400 border-amber-500/30',
-    },
-    {
-      id: 'payments',
-      name: 'Pending Payments',
-      href: '/dashboard/payments',
-      icon: Wallet,
-      badge: counts.pendingPayments ? String(counts.pendingPayments) : undefined,
-      badgeColor: 'bg-purple-500/20 text-purple-400 border-purple-500/30',
     },
     {
       id: 'renewals',
@@ -110,70 +149,11 @@ export function Sidebar() {
     },
     {
       id: 'anniversary',
-      name: 'Membership Anniversary',
+      name: 'Anniversaries',
       href: '/dashboard/anniversaries',
       icon: Award,
       badge: counts.anniversaries ? String(counts.anniversaries) : undefined,
       badgeColor: 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30',
-    },
-    {
-      id: 'schedule',
-      name: "Today's Schedule",
-      href: '/dashboard/bookings',
-      icon: CalendarDays,
-    },
-    {
-      id: 'dashboard',
-      name: 'AUREX Dashboard',
-      href: '/dashboard',
-      icon: LayoutDashboard,
-      exact: true,
-    },
-  ];
-
-  // Secondary Clinical & Records Items
-  const clinicalNavItems = [
-    {
-      name: 'All Clients (360°)',
-      href: '/dashboard/clients',
-      icon: Users,
-      allowed: true,
-    },
-    {
-      name: 'Slot Booking',
-      href: '/dashboard/slot-booking',
-      icon: CalendarCheck,
-      allowed: true,
-    },
-    {
-      name: 'Live Attendance',
-      href: '/dashboard/attendance',
-      icon: ClipboardList,
-      allowed: true,
-    },
-    {
-      name: 'Packages Catalog',
-      href: '/dashboard/packages',
-      icon: Package,
-      allowed: true,
-    },
-    {
-      name: 'Specialists Roster',
-      href: '/dashboard/specialists',
-      icon: Stethoscope,
-      allowed: true,
-    },
-    {
-      name: 'Clinical Assessments',
-      href: '/dashboard/assessments',
-      icon: FileHeart,
-      allowed: true,
-    },
-    {
-      name: 'Reports & Analytics',
-      href: '/dashboard/reports',
-      icon: BarChart3,
-      allowed: canViewReports(userRole),
     },
   ];
 
@@ -209,7 +189,7 @@ export function Sidebar() {
         collapsed ? 'w-[64px]' : 'w-[240px]'
       }`}
     >
-      {/* Top Header & Brand */}
+      {/* Top Section */}
       <div className="flex flex-col min-h-0 flex-1 overflow-y-auto scrollbar-none">
         <div className="p-3.5 border-b border-slate-800 flex items-center justify-between">
           <Link href="/dashboard" className="flex items-center gap-2.5 min-w-0">
@@ -226,34 +206,24 @@ export function Sidebar() {
             )}
           </Link>
 
-          {/* Collapse Toggle Button */}
           <button
             type="button"
             onClick={() => setCollapsed(!collapsed)}
-            className="p-1 rounded-lg hover:bg-slate-800 text-slate-400 hover:text-white transition shrink-0"
-            title={collapsed ? 'Expand sidebar (240px)' : 'Collapse sidebar (64px)'}
+            className="p-1 rounded-lg hover:bg-slate-800 text-slate-400 hover:text-slate-200 transition"
+            title={collapsed ? 'Expand Sidebar' : 'Collapse Sidebar'}
           >
             {collapsed ? <ChevronRight className="w-4 h-4" /> : <ChevronLeft className="w-4 h-4" />}
           </button>
         </div>
 
-        {/* TOP SECTION — QUICK MANAGE */}
+        {/* Primary Navigation Links */}
         <div className="p-2 space-y-1">
-          {!collapsed ? (
-            <div className="px-2 pt-2 pb-1 text-[10px] font-bold uppercase tracking-wider text-slate-400 flex items-center justify-between">
-              <span>Quick Manage</span>
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
-            </div>
-          ) : (
-            <div className="h-2" />
-          )}
-
           <nav className="space-y-0.5">
-            {quickManageItems.map((item) => {
+            {primaryNavItems.map((item) => {
               const Icon = item.icon;
               const isActive = item.exact
                 ? pathname === item.href
-                : pathname === item.href || (item.href !== '/dashboard' && pathname.startsWith(item.href));
+                : pathname === item.href || pathname.startsWith(`${item.href}/`);
 
               return (
                 <Link
@@ -264,14 +234,14 @@ export function Sidebar() {
                     collapsed ? 'justify-center p-2.5' : 'justify-between px-2.5 py-2'
                   } ${
                     isActive
-                      ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 font-bold shadow-xs'
-                      : 'text-slate-400 hover:text-slate-100 hover:bg-slate-800/80 font-medium'
+                      ? 'bg-emerald-500 text-white font-bold shadow-md shadow-emerald-950'
+                      : 'text-slate-300 hover:text-white hover:bg-slate-800/80 font-medium'
                   }`}
                 >
                   <div className="flex items-center gap-2.5 min-w-0">
                     <Icon
                       className={`w-4 h-4 shrink-0 ${
-                        isActive ? 'text-emerald-400' : 'text-slate-400 group-hover:text-slate-200'
+                        isActive ? 'text-white' : 'text-slate-400 group-hover:text-slate-200'
                       }`}
                     />
                     {!collapsed && <span className="truncate">{item.name}</span>}
@@ -287,11 +257,9 @@ export function Sidebar() {
                     </span>
                   )}
 
-                  {/* Tooltip on collapsed */}
                   {collapsed && (
                     <div className="absolute left-full ml-2 px-2.5 py-1 bg-slate-900 text-white text-xs font-semibold rounded-md shadow-xl border border-slate-700 whitespace-nowrap opacity-0 group-hover:opacity-100 pointer-events-none z-50 transition-opacity">
                       {item.name}
-                      {item.badge && <span className="ml-1.5 text-emerald-400">({item.badge})</span>}
                     </div>
                   )}
                 </Link>
@@ -299,18 +267,18 @@ export function Sidebar() {
             })}
           </nav>
 
-          {/* Secondary Clinical Operations Section */}
+          {/* Quick Operations Submenu */}
           <div className="pt-3 border-t border-slate-800/80 mt-2">
             {!collapsed ? (
               <button
                 type="button"
-                onClick={() => setShowClinicalMenu(!showClinicalMenu)}
+                onClick={() => setShowQuickMenu(!showQuickMenu)}
                 className="w-full flex items-center justify-between px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-slate-400 hover:text-slate-200 transition"
               >
-                <span>Clinical Records</span>
+                <span>Quick Operations</span>
                 <ChevronDown
                   className={`w-3.5 h-3.5 transition-transform ${
-                    showClinicalMenu ? 'rotate-180' : ''
+                    showQuickMenu ? 'rotate-180' : ''
                   }`}
                 />
               </button>
@@ -318,59 +286,67 @@ export function Sidebar() {
               <div className="w-6 h-px bg-slate-800 mx-auto my-2" />
             )}
 
-            {(!collapsed ? showClinicalMenu : true) && (
+            {(!collapsed ? showQuickMenu : true) && (
               <nav className="space-y-0.5 mt-1">
-                {clinicalNavItems
-                  .filter((item) => item.allowed)
-                  .map((item) => {
-                    const Icon = item.icon;
-                    const isActive = pathname === item.href || pathname.startsWith(`${item.href}/`);
+                {quickManageItems.map((item) => {
+                  const Icon = item.icon;
+                  const isActive = pathname === item.href;
 
-                    return (
-                      <Link
-                        key={item.name}
-                        href={item.href}
-                        title={collapsed ? item.name : undefined}
-                        className={`flex items-center rounded-lg text-xs transition-all duration-150 relative group ${
-                          collapsed ? 'justify-center p-2.5' : 'justify-between px-2.5 py-1.5'
-                        } ${
-                          isActive
-                            ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 font-bold'
-                            : 'text-slate-400 hover:text-slate-100 hover:bg-slate-800/80 font-medium'
-                        }`}
-                      >
-                        <div className="flex items-center gap-2.5 min-w-0">
-                          <Icon
-                            className={`w-4 h-4 shrink-0 ${
-                              isActive ? 'text-emerald-400' : 'text-slate-400 group-hover:text-slate-200'
-                            }`}
-                          />
-                          {!collapsed && <span className="truncate">{item.name}</span>}
+                  return (
+                    <Link
+                      key={item.name}
+                      href={item.href}
+                      title={collapsed ? item.name : undefined}
+                      className={`flex items-center rounded-lg text-xs transition-all duration-150 relative group ${
+                        collapsed ? 'justify-center p-2' : 'justify-between px-2.5 py-1.5'
+                      } ${
+                        isActive
+                          ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 font-bold'
+                          : 'text-slate-400 hover:text-slate-100 hover:bg-slate-800/80 font-medium'
+                      }`}
+                    >
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <Icon
+                          className={`w-3.5 h-3.5 shrink-0 ${
+                            isActive ? 'text-emerald-400' : 'text-slate-400 group-hover:text-slate-200'
+                          }`}
+                        />
+                        {!collapsed && <span className="truncate">{item.name}</span>}
+                      </div>
+
+                      {!collapsed && item.badge && (
+                        <span
+                          className={`text-[9px] px-1.5 py-0.2 rounded-full border font-bold shrink-0 ${
+                            item.badgeColor || 'bg-slate-800 text-slate-300 border-slate-700'
+                          }`}
+                        >
+                          {item.badge}
+                        </span>
+                      )}
+
+                      {collapsed && (
+                        <div className="absolute left-full ml-2 px-2.5 py-1 bg-slate-900 text-white text-xs font-semibold rounded-md shadow-xl border border-slate-700 whitespace-nowrap opacity-0 group-hover:opacity-100 pointer-events-none z-50 transition-opacity">
+                          {item.name}
                         </div>
-
-                        {collapsed && (
-                          <div className="absolute left-full ml-2 px-2.5 py-1 bg-slate-900 text-white text-xs font-semibold rounded-md shadow-xl border border-slate-700 whitespace-nowrap opacity-0 group-hover:opacity-100 pointer-events-none z-50 transition-opacity">
-                            {item.name}
-                          </div>
-                        )}
-                      </Link>
-                    );
-                  })}
+                      )}
+                    </Link>
+                  );
+                })}
               </nav>
             )}
           </div>
         </div>
       </div>
 
-      {/* Bottom of Sidebar: Logged-in User, Role Badge, Logout */}
-      <div className="p-2 border-t border-slate-800 bg-slate-950/40">
+      {/* Bottom: Active User & 3-Role Switcher */}
+      <div className="p-2.5 border-t border-slate-800 bg-slate-950/60">
         {!collapsed ? (
           <div className="space-y-2">
             <div className="p-2 rounded-lg bg-slate-900 border border-slate-800">
               <div className="flex items-center justify-between">
                 <div className="truncate">
                   <p className="text-xs font-bold text-white truncate">
-                    {session?.user?.name || 'Staff User'}
+                    {session?.user?.name || 'Authorized User'}
                   </p>
                   <p className="text-[10px] text-slate-400 truncate">
                     {session?.user?.email || 'admin@aurex.com'}
@@ -385,7 +361,7 @@ export function Sidebar() {
                 </span>
               </div>
 
-              {/* Role Switcher */}
+              {/* Role Switcher (Owner, Manager, Receptionist) */}
               <div className="mt-2 pt-1.5 border-t border-slate-800 flex items-center justify-between text-[10px] text-slate-400">
                 <span className="flex items-center gap-1 text-slate-400 text-[10px]">
                   <Sparkles className="w-2.5 h-2.5 text-amber-400" /> Switch:

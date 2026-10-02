@@ -20,7 +20,12 @@ import {
   ChevronRight,
   Receipt,
   ArrowUpRight,
-  Filter
+  Filter,
+  Crown,
+  AlertTriangle,
+  RefreshCw,
+  Phone,
+  ArrowRight
 } from 'lucide-react';
 import { formatCurrency, formatDate } from '@/lib/utils';
 import { Header } from '@/components/layout/Header';
@@ -32,8 +37,8 @@ export default function PaymentsPage() {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   
-  // Tab view: 'ALL' | 'PAID' | 'YET_TO_PAY' | 'PRIVATE' | 'SEMI_PRIVATE'
-  const [activeTab, setActiveTab] = useState<'ALL' | 'PAID' | 'YET_TO_PAY' | 'PRIVATE' | 'SEMI_PRIVATE'>('ALL');
+  // Tab view: 'DUE_PAYMENTS' | 'EXPIRING' | 'SEMI_PRIVATE' | 'PREMIUM' | 'LUXURY' | 'ALL' | 'PAID'
+  const [activeTab, setActiveTab] = useState<'DUE_PAYMENTS' | 'EXPIRING' | 'SEMI_PRIVATE' | 'PREMIUM' | 'LUXURY' | 'ALL' | 'PAID'>('DUE_PAYMENTS');
   
   // Payment Modal
   const [showRecordModal, setShowRecordModal] = useState(false);
@@ -68,39 +73,59 @@ export default function PaymentsPage() {
     loadData();
   }, []);
 
-  // Compute Active Paid Clients vs Yet to Pay Clients
+  const now = new Date();
+
+  // Compute Active Paid Clients vs Due / Outstanding Balances
   const activePaidPackages = clientPackages.filter((cp) => (cp.balanceRemaining || 0) <= 0);
-  const yetToPayPackages = clientPackages.filter((cp) => (cp.balanceRemaining || 0) > 0);
-  const privatePackages = clientPackages.filter((cp) => cp.serviceType === 'PREMIUM');
+  const duePaymentPackages = clientPackages.filter((cp) => (cp.balanceRemaining || 0) > 0);
+  
+  // Categories
   const semiPrivatePackages = clientPackages.filter((cp) => cp.serviceType === 'SEMI_PRIVATE');
+  const premiumPackages = clientPackages.filter((cp) => cp.serviceType === 'PREMIUM');
+  const luxuryPackages = clientPackages.filter((cp) => cp.serviceType === 'LUXURY');
+
+  // Expiring Packages (Expiring in <= 15 days or already expired)
+  const expiringPackages = [...clientPackages].map((cp) => {
+    const expDate = new Date(cp.expiryDate);
+    const diffDays = Math.ceil((expDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+    let expiryStatus: 'EXPIRED' | 'CRITICAL' | 'EXPIRING_SOON' | 'HEALTHY' = 'HEALTHY';
+    if (diffDays < 0) expiryStatus = 'EXPIRED';
+    else if (diffDays <= 5) expiryStatus = 'CRITICAL';
+    else if (diffDays <= 15) expiryStatus = 'EXPIRING_SOON';
+    return { ...cp, diffDays, expiryStatus };
+  }).sort((a, b) => a.diffDays - b.diffDays);
 
   // Compute Total Metrics
   const totalCollected = payments.reduce((acc, p) => acc + (p.isRefund ? -p.amount : p.amount), 0);
-  const totalOutstanding = yetToPayPackages.reduce((acc, cp) => acc + (cp.balanceRemaining || 0), 0);
-  const privateRevenue = payments
-    .filter((p) => p.clientPackage?.serviceType === 'PREMIUM')
-    .reduce((acc, p) => acc + (p.isRefund ? -p.amount : p.amount), 0);
+  const totalOutstandingDues = duePaymentPackages.reduce((acc, cp) => acc + (cp.balanceRemaining || 0), 0);
   const semiPrivateRevenue = payments
     .filter((p) => p.clientPackage?.serviceType === 'SEMI_PRIVATE')
     .reduce((acc, p) => acc + (p.isRefund ? -p.amount : p.amount), 0);
+  const premiumRevenue = payments
+    .filter((p) => p.clientPackage?.serviceType === 'PREMIUM')
+    .reduce((acc, p) => acc + (p.isRefund ? -p.amount : p.amount), 0);
+  const luxuryRevenue = payments
+    .filter((p) => p.clientPackage?.serviceType === 'LUXURY')
+    .reduce((acc, p) => acc + (p.isRefund ? -p.amount : p.amount), 0);
 
-  // Filtered packages based on search
-  const filteredClientPackages = clientPackages.filter((cp) => {
+  // Filtered packages based on search & tab
+  const getDisplayClientPackages = () => {
+    let list = clientPackages;
+    if (activeTab === 'DUE_PAYMENTS') list = duePaymentPackages;
+    else if (activeTab === 'PAID') list = activePaidPackages;
+    else if (activeTab === 'SEMI_PRIVATE') list = semiPrivatePackages;
+    else if (activeTab === 'PREMIUM') list = premiumPackages;
+    else if (activeTab === 'LUXURY') list = luxuryPackages;
+
     const term = searchTerm.toLowerCase();
-    const matchSearch = 
+    if (!term) return list;
+    return list.filter((cp) => 
       cp.client?.name?.toLowerCase().includes(term) ||
       cp.client?.clientId?.toLowerCase().includes(term) ||
       cp.client?.phone?.includes(term) ||
-      cp.name?.toLowerCase().includes(term);
-
-    if (!matchSearch) return false;
-
-    if (activeTab === 'PAID') return (cp.balanceRemaining || 0) <= 0;
-    if (activeTab === 'YET_TO_PAY') return (cp.balanceRemaining || 0) > 0;
-    if (activeTab === 'PRIVATE') return cp.serviceType === 'PREMIUM';
-    if (activeTab === 'SEMI_PRIVATE') return cp.serviceType === 'SEMI_PRIVATE';
-    return true;
-  });
+      cp.name?.toLowerCase().includes(term)
+    );
+  };
 
   // Filtered transactions for ALL tab
   const filteredPayments = payments.filter((p) => {
@@ -115,12 +140,13 @@ export default function PaymentsPage() {
 
   const handleOpenPaymentForClient = (pkg: any) => {
     setSelectedClientForPayment(pkg);
+    const due = (pkg.balanceRemaining !== undefined && pkg.balanceRemaining > 0) ? pkg.balanceRemaining : '';
     setForm({
       clientId: pkg.clientId,
       clientPackageId: pkg.id,
-      amount: String(pkg.balanceRemaining > 0 ? pkg.balanceRemaining : ''),
+      amount: String(due),
       paymentMethod: 'UPI',
-      notes: `Payment for ${pkg.name}`,
+      notes: `Payment for ${pkg.name} (${pkg.client?.name})`,
       isRefund: false,
     });
     setShowRecordModal(true);
@@ -129,7 +155,7 @@ export default function PaymentsPage() {
   const handleRecordPayment = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!form.clientId || !form.amount) {
-      alert('Please select a client and specify the amount.');
+      alert('Please select a client and specify the payment amount.');
       return;
     }
 
@@ -168,76 +194,91 @@ export default function PaymentsPage() {
   return (
     <div className="min-h-screen bg-slate-50">
       <Header
-        title="Billing & Payments Center"
-        subtitle="Manage client invoices, active paid accounts, pending balances, and private vs semi-private collections"
+        title="Billing, Payments & Due Management"
+        subtitle="Manage client due balances, package expiries, category collections (Semi-Private ₹12k, Premium ₹12k, Luxury ₹46k), and official receipts"
       />
 
       <div className="p-6 space-y-6 max-w-7xl mx-auto">
-        {/* Top 4 Summary Metrics Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          {/* Card 1: Total Collected */}
-          <div className="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-sm relative overflow-hidden">
-            <div className="flex items-center justify-between mb-3">
-              <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Total Collection</span>
-              <div className="w-9 h-9 rounded-xl bg-emerald-100 text-emerald-600 flex items-center justify-center font-black">
-                ₹
+        {/* Top 5 Metrics Cards */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3.5">
+          {/* Card 1: Total Due / Outstanding */}
+          <div className="bg-white rounded-2xl p-4 border-2 border-rose-200/90 shadow-sm relative overflow-hidden">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-[11px] font-black text-rose-700 uppercase tracking-wider">Remaining Dues</span>
+              <div className="w-8 h-8 rounded-xl bg-rose-100 text-rose-600 flex items-center justify-center">
+                <AlertCircle className="w-4 h-4" />
               </div>
             </div>
-            <div className="text-2xl font-black text-slate-900 tracking-tight">
+            <div className="text-xl font-black text-rose-600 tracking-tight">
+              {formatCurrency(totalOutstandingDues)}
+            </div>
+            <p className="text-[11px] text-slate-500 mt-1 font-semibold flex items-center gap-1">
+              <Clock className="w-3 h-3 text-rose-500" />
+              {duePaymentPackages.length} Clients with pending balance
+            </p>
+          </div>
+
+          {/* Card 2: Total Collected */}
+          <div className="bg-white rounded-2xl p-4 border border-slate-200 shadow-sm relative overflow-hidden">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Total Received</span>
+              <div className="w-8 h-8 rounded-xl bg-emerald-100 text-emerald-600 flex items-center justify-center">
+                <DollarSign className="w-4 h-4" />
+              </div>
+            </div>
+            <div className="text-xl font-black text-emerald-600 tracking-tight">
               {formatCurrency(totalCollected)}
             </div>
-            <p className="text-xs text-slate-400 mt-1 font-medium flex items-center gap-1">
-              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
-              {activePaidPackages.length} Fully Paid Client Packages
+            <p className="text-[11px] text-slate-400 mt-1 font-medium">
+              Across {payments.length} settled receipts
             </p>
           </div>
 
-          {/* Card 2: Yet to Pay / Outstanding */}
-          <div className="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-sm relative overflow-hidden">
-            <div className="flex items-center justify-between mb-3">
-              <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Yet to Pay / Due</span>
-              <div className="w-9 h-9 rounded-xl bg-rose-100 text-rose-600 flex items-center justify-center">
-                <AlertCircle className="w-5 h-5" />
+          {/* Card 3: Semi-Private (₹12,000) */}
+          <div className="bg-white rounded-2xl p-4 border border-purple-200 shadow-sm relative overflow-hidden">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-[11px] font-bold text-purple-700 uppercase tracking-wider">Semi-Private (₹12k)</span>
+              <div className="w-8 h-8 rounded-xl bg-purple-100 text-purple-600 flex items-center justify-center">
+                <Layers className="w-4 h-4" />
               </div>
             </div>
-            <div className="text-2xl font-black text-rose-600 tracking-tight">
-              {formatCurrency(totalOutstanding)}
-            </div>
-            <p className="text-xs text-slate-400 mt-1 font-medium flex items-center gap-1">
-              <Clock className="w-3.5 h-3.5 text-rose-500" />
-              {yetToPayPackages.length} Clients with pending balance
-            </p>
-          </div>
-
-          {/* Card 3: Private Session Clients (1:1) */}
-          <div className="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-sm relative overflow-hidden">
-            <div className="flex items-center justify-between mb-3">
-              <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Private Clients (1:1)</span>
-              <div className="w-9 h-9 rounded-xl bg-amber-100 text-amber-600 flex items-center justify-center">
-                <Sparkles className="w-5 h-5" />
-              </div>
-            </div>
-            <div className="text-2xl font-black text-slate-900 tracking-tight">
-              {privatePackages.length} <span className="text-xs font-semibold text-slate-400">Clients</span>
-            </div>
-            <p className="text-xs text-slate-500 mt-1 font-medium">
-              Collected: <strong className="text-emerald-600">{formatCurrency(privateRevenue)}</strong>
-            </p>
-          </div>
-
-          {/* Card 4: Semi-Private Clients (1:4) */}
-          <div className="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-sm relative overflow-hidden">
-            <div className="flex items-center justify-between mb-3">
-              <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Semi-Private (1:4)</span>
-              <div className="w-9 h-9 rounded-xl bg-purple-100 text-purple-600 flex items-center justify-center">
-                <Layers className="w-5 h-5" />
-              </div>
-            </div>
-            <div className="text-2xl font-black text-slate-900 tracking-tight">
+            <div className="text-xl font-black text-slate-900 tracking-tight">
               {semiPrivatePackages.length} <span className="text-xs font-semibold text-slate-400">Clients</span>
             </div>
-            <p className="text-xs text-slate-500 mt-1 font-medium">
-              Collected: <strong className="text-emerald-600">{formatCurrency(semiPrivateRevenue)}</strong>
+            <p className="text-[11px] text-slate-500 mt-1 font-medium">
+              Collected: <strong className="text-purple-700 font-bold">{formatCurrency(semiPrivateRevenue)}</strong>
+            </p>
+          </div>
+
+          {/* Card 4: Premium 1:1 (₹12,000) */}
+          <div className="bg-white rounded-2xl p-4 border border-amber-200 shadow-sm relative overflow-hidden">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-[11px] font-bold text-amber-700 uppercase tracking-wider">Premium 1:1 (₹12k)</span>
+              <div className="w-8 h-8 rounded-xl bg-amber-100 text-amber-600 flex items-center justify-center">
+                <Sparkles className="w-4 h-4" />
+              </div>
+            </div>
+            <div className="text-xl font-black text-slate-900 tracking-tight">
+              {premiumPackages.length} <span className="text-xs font-semibold text-slate-400">Clients</span>
+            </div>
+            <p className="text-[11px] text-slate-500 mt-1 font-medium">
+              Collected: <strong className="text-amber-700 font-bold">{formatCurrency(premiumRevenue)}</strong>
+            </p>
+          </div>
+
+          {/* Card 5: Luxury (₹46,000) */}
+          <div className="bg-white rounded-2xl p-4 border border-rose-200 shadow-sm relative overflow-hidden">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-[11px] font-bold text-rose-700 uppercase tracking-wider">Luxury (₹46k)</span>
+              <div className="w-8 h-8 rounded-xl bg-rose-100 text-rose-600 flex items-center justify-center">
+                <Crown className="w-4 h-4" />
+              </div>
+            </div>
+            <div className="text-xl font-black text-slate-900 tracking-tight">
+              {luxuryPackages.length} <span className="text-xs font-semibold text-slate-400">Clients</span>
+            </div>
+            <p className="text-[11px] text-slate-500 mt-1 font-medium">
+              Collected: <strong className="text-rose-700 font-bold">{formatCurrency(luxuryRevenue)}</strong>
             </p>
           </div>
         </div>
@@ -247,62 +288,74 @@ export default function PaymentsPage() {
           {/* Segmented Filter Tabs */}
           <div className="flex items-center gap-1.5 p-1 bg-slate-100 rounded-xl overflow-x-auto w-full md:w-auto">
             <button
-              onClick={() => setActiveTab('ALL')}
-              className={`px-3.5 py-2 rounded-lg text-xs font-bold transition whitespace-nowrap ${
-                activeTab === 'ALL'
-                  ? 'bg-white text-slate-900 shadow-sm'
-                  : 'text-slate-600 hover:text-slate-900'
-              }`}
-            >
-              All Invoices ({payments.length})
-            </button>
-
-            <button
-              onClick={() => setActiveTab('PAID')}
-              className={`px-3.5 py-2 rounded-lg text-xs font-bold transition whitespace-nowrap flex items-center gap-1.5 ${
-                activeTab === 'PAID'
-                  ? 'bg-emerald-600 text-white shadow-sm'
-                  : 'text-slate-600 hover:text-emerald-700'
-              }`}
-            >
-              <CheckCircle2 className="w-3.5 h-3.5" />
-              Active Paid Clients ({activePaidPackages.length})
-            </button>
-
-            <button
-              onClick={() => setActiveTab('YET_TO_PAY')}
-              className={`px-3.5 py-2 rounded-lg text-xs font-bold transition whitespace-nowrap flex items-center gap-1.5 ${
-                activeTab === 'YET_TO_PAY'
+              onClick={() => setActiveTab('DUE_PAYMENTS')}
+              className={`px-3 py-1.5 rounded-lg text-xs font-black transition whitespace-nowrap flex items-center gap-1.5 ${
+                activeTab === 'DUE_PAYMENTS'
                   ? 'bg-rose-600 text-white shadow-sm'
-                  : 'text-slate-600 hover:text-rose-700'
+                  : 'text-rose-700 hover:bg-rose-50'
               }`}
             >
               <AlertCircle className="w-3.5 h-3.5" />
-              Clients Yet to Pay ({yetToPayPackages.length})
+              Due Payments ({duePaymentPackages.length})
             </button>
 
             <button
-              onClick={() => setActiveTab('PRIVATE')}
-              className={`px-3.5 py-2 rounded-lg text-xs font-bold transition whitespace-nowrap flex items-center gap-1.5 ${
-                activeTab === 'PRIVATE'
-                  ? 'bg-amber-500 text-white shadow-sm'
-                  : 'text-slate-600 hover:text-amber-700'
+              onClick={() => setActiveTab('EXPIRING')}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition whitespace-nowrap flex items-center gap-1.5 ${
+                activeTab === 'EXPIRING'
+                  ? 'bg-amber-600 text-white shadow-sm'
+                  : 'text-amber-700 hover:bg-amber-50'
               }`}
             >
-              <Sparkles className="w-3.5 h-3.5" />
-              Private 1:1 ({privatePackages.length})
+              <Clock className="w-3.5 h-3.5" />
+              Expiring Packages ({expiringPackages.filter(p => p.diffDays <= 15).length})
             </button>
 
             <button
               onClick={() => setActiveTab('SEMI_PRIVATE')}
-              className={`px-3.5 py-2 rounded-lg text-xs font-bold transition whitespace-nowrap flex items-center gap-1.5 ${
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition whitespace-nowrap flex items-center gap-1.5 ${
                 activeTab === 'SEMI_PRIVATE'
                   ? 'bg-purple-600 text-white shadow-sm'
                   : 'text-slate-600 hover:text-purple-700'
               }`}
             >
               <Layers className="w-3.5 h-3.5" />
-              Semi-Private 1:4 ({semiPrivatePackages.length})
+              Semi-Private (₹12k)
+            </button>
+
+            <button
+              onClick={() => setActiveTab('PREMIUM')}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition whitespace-nowrap flex items-center gap-1.5 ${
+                activeTab === 'PREMIUM'
+                  ? 'bg-amber-500 text-white shadow-sm'
+                  : 'text-slate-600 hover:text-amber-700'
+              }`}
+            >
+              <Sparkles className="w-3.5 h-3.5" />
+              Premium 1:1 (₹12k)
+            </button>
+
+            <button
+              onClick={() => setActiveTab('LUXURY')}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition whitespace-nowrap flex items-center gap-1.5 ${
+                activeTab === 'LUXURY'
+                  ? 'bg-rose-600 text-white shadow-sm'
+                  : 'text-slate-600 hover:text-rose-700'
+              }`}
+            >
+              <Crown className="w-3.5 h-3.5" />
+              Luxury (₹46k)
+            </button>
+
+            <button
+              onClick={() => setActiveTab('ALL')}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition whitespace-nowrap ${
+                activeTab === 'ALL'
+                  ? 'bg-white text-slate-900 shadow-sm'
+                  : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              All Invoices ({payments.length})
             </button>
           </div>
 
@@ -312,7 +365,7 @@ export default function PaymentsPage() {
               <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
               <input
                 type="text"
-                placeholder="Search client, ID, invoice..."
+                placeholder="Search client, ID, package..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="w-full pl-9 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
@@ -335,7 +388,7 @@ export default function PaymentsPage() {
               className="flex items-center gap-1.5 px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold shadow-sm transition whitespace-nowrap"
             >
               <PlusCircle className="w-4 h-4" />
-              + Log Payment
+              + Record Payment
             </button>
           </div>
         </div>
@@ -346,8 +399,205 @@ export default function PaymentsPage() {
             <div className="w-8 h-8 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin mx-auto mb-3" />
             <p className="text-xs font-bold uppercase tracking-wider">Loading Billing & Payments Data...</p>
           </div>
+        ) : activeTab === 'DUE_PAYMENTS' ? (
+          /* DUE PAYMENTS & REMAINING BALANCES TABLE */
+          <div className="bg-white rounded-2xl border border-rose-200/80 overflow-hidden shadow-sm">
+            <div className="px-6 py-4 bg-rose-50/50 border-b border-rose-100 flex items-center justify-between">
+              <div>
+                <h3 className="text-sm font-extrabold text-rose-950 flex items-center gap-2">
+                  <AlertCircle className="w-4 h-4 text-rose-600" />
+                  Clients with Remaining Due Amounts
+                </h3>
+                <p className="text-xs text-rose-700">Collect pending balances for active packages</p>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-black text-rose-700 bg-rose-100 px-3 py-1 rounded-full border border-rose-200">
+                  Total Outstanding: {formatCurrency(totalOutstandingDues)}
+                </span>
+              </div>
+            </div>
+
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs">
+                <thead>
+                  <tr className="bg-slate-50 text-slate-500 font-bold uppercase tracking-wider border-b border-slate-200">
+                    <th className="py-3 px-4">Client ID</th>
+                    <th className="py-3 px-4">Client Name</th>
+                    <th className="py-3 px-4">Phone / Contact</th>
+                    <th className="py-3 px-4">Package Enrolled</th>
+                    <th className="py-3 px-4 text-right">Package Price</th>
+                    <th className="py-3 px-4 text-right">Amount Paid</th>
+                    <th className="py-3 px-4 text-right">Due Balance</th>
+                    <th className="py-3 px-4">Package Expiry</th>
+                    <th className="py-3 px-4 text-center">Action</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {duePaymentPackages.length === 0 ? (
+                    <tr>
+                      <td colSpan={9} className="py-12 text-center text-slate-400">
+                        <CheckCircle2 className="w-10 h-10 text-emerald-500 mx-auto mb-2" />
+                        <p className="font-bold text-slate-800">All Client Accounts are Fully Settled!</p>
+                        <p className="text-slate-400 text-xs mt-0.5">Zero pending due payments at this time.</p>
+                      </td>
+                    </tr>
+                  ) : (
+                    duePaymentPackages.map((cp) => (
+                      <tr key={cp.id} className="hover:bg-rose-50/20 transition">
+                        <td className="py-3.5 px-4 font-mono font-bold text-slate-800">
+                          {cp.client?.clientId}
+                        </td>
+                        <td className="py-3.5 px-4">
+                          <Link href={`/dashboard/clients/${cp.clientId}`} className="font-extrabold text-slate-900 hover:text-emerald-600 transition">
+                            {cp.client?.name}
+                          </Link>
+                        </td>
+                        <td className="py-3.5 px-4 text-slate-600">
+                          <span className="flex items-center gap-1 font-mono">
+                            <Phone className="w-3 h-3 text-slate-400" />
+                            {cp.client?.phone}
+                          </span>
+                        </td>
+                        <td className="py-3.5 px-4">
+                          <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                            cp.serviceType === 'SEMI_PRIVATE' ? 'bg-purple-100 text-purple-700' :
+                            cp.serviceType === 'PREMIUM' ? 'bg-amber-100 text-amber-700' :
+                            'bg-rose-100 text-rose-700'
+                          }`}>
+                            {cp.name}
+                          </span>
+                        </td>
+                        <td className="py-3.5 px-4 text-right font-bold text-slate-700">
+                          {formatCurrency(cp.packageAmount || (cp.serviceType === 'LUXURY' ? 46000 : 12000))}
+                        </td>
+                        <td className="py-3.5 px-4 text-right font-bold text-emerald-600">
+                          {formatCurrency(cp.amountPaid || 0)}
+                        </td>
+                        <td className="py-3.5 px-4 text-right font-black text-rose-600 text-sm">
+                          {formatCurrency(cp.balanceRemaining)}
+                        </td>
+                        <td className="py-3.5 px-4 text-slate-600">
+                          {formatDate(cp.expiryDate)}
+                        </td>
+                        <td className="py-3.5 px-4 text-center">
+                          <button
+                            onClick={() => handleOpenPaymentForClient(cp)}
+                            className="px-3.5 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs shadow-sm transition flex items-center justify-center gap-1 mx-auto"
+                          >
+                            <span>Collect Due</span>
+                            <ArrowRight className="w-3.5 h-3.5" />
+                          </button>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        ) : activeTab === 'EXPIRING' ? (
+          /* EXPIRING PACKAGES & EXPIRY TRACKER */
+          <div className="bg-white rounded-2xl border border-amber-200/80 overflow-hidden shadow-sm">
+            <div className="px-6 py-4 bg-amber-50/50 border-b border-amber-100 flex items-center justify-between">
+              <div>
+                <h3 className="text-sm font-extrabold text-amber-950 flex items-center gap-2">
+                  <Clock className="w-4 h-4 text-amber-600" />
+                  Package Expirations & Renewal Monitor
+                </h3>
+                <p className="text-xs text-amber-800">Track expiring and expired client memberships</p>
+              </div>
+            </div>
+
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs">
+                <thead>
+                  <tr className="bg-slate-50 text-slate-500 font-bold uppercase tracking-wider border-b border-slate-200">
+                    <th className="py-3 px-4">Client</th>
+                    <th className="py-3 px-4">Package</th>
+                    <th className="py-3 px-4 text-center">Sessions Remaining</th>
+                    <th className="py-3 px-4">Expiry Date</th>
+                    <th className="py-3 px-4 text-center">Status / Countdown</th>
+                    <th className="py-3 px-4 text-right">Due Balance</th>
+                    <th className="py-3 px-4 text-center">Action</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {expiringPackages.length === 0 ? (
+                    <tr>
+                      <td colSpan={7} className="py-12 text-center text-slate-400">
+                        No packages recorded yet.
+                      </td>
+                    </tr>
+                  ) : (
+                    expiringPackages.map((cp) => (
+                      <tr key={cp.id} className={`hover:bg-slate-50 transition ${
+                        cp.expiryStatus === 'EXPIRED' ? 'bg-red-50/40' :
+                        cp.expiryStatus === 'CRITICAL' ? 'bg-amber-50/30' : ''
+                      }`}>
+                        <td className="py-3.5 px-4">
+                          <Link href={`/dashboard/clients/${cp.clientId}`} className="font-extrabold text-slate-900 hover:text-emerald-600 transition block">
+                            {cp.client?.name}
+                          </Link>
+                          <span className="text-[10px] text-slate-400 font-mono">{cp.client?.clientId}</span>
+                        </td>
+                        <td className="py-3.5 px-4 font-semibold text-slate-800">
+                          {cp.name}
+                        </td>
+                        <td className="py-3.5 px-4 text-center font-bold text-slate-700">
+                          <span className={`px-2 py-0.5 rounded-full text-[11px] font-mono ${
+                            cp.sessionsRemaining <= 2 ? 'bg-rose-100 text-rose-700' : 'bg-slate-100 text-slate-700'
+                          }`}>
+                            {cp.sessionsRemaining} / {cp.totalSessions} Left
+                          </span>
+                        </td>
+                        <td className="py-3.5 px-4 font-medium text-slate-700">
+                          {formatDate(cp.expiryDate)}
+                        </td>
+                        <td className="py-3.5 px-4 text-center">
+                          {cp.expiryStatus === 'EXPIRED' ? (
+                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-red-100 text-red-800 font-black text-[10px] border border-red-200">
+                              <AlertTriangle className="w-3 h-3 text-red-600" />
+                              EXPIRED ({Math.abs(cp.diffDays)} days ago)
+                            </span>
+                          ) : cp.expiryStatus === 'CRITICAL' ? (
+                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-800 font-black text-[10px] border border-amber-200 animate-pulse">
+                              <Clock className="w-3 h-3 text-amber-600" />
+                              Expires in {cp.diffDays} days!
+                            </span>
+                          ) : cp.expiryStatus === 'EXPIRING_SOON' ? (
+                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-blue-100 text-blue-800 font-bold text-[10px]">
+                              {cp.diffDays} days left
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 font-semibold text-[10px]">
+                              {cp.diffDays} days left
+                            </span>
+                          )}
+                        </td>
+                        <td className="py-3.5 px-4 text-right font-bold">
+                          {cp.balanceRemaining > 0 ? (
+                            <span className="text-rose-600 font-black">{formatCurrency(cp.balanceRemaining)}</span>
+                          ) : (
+                            <span className="text-emerald-600 text-[11px]">Settled</span>
+                          )}
+                        </td>
+                        <td className="py-3.5 px-4 text-center">
+                          <button
+                            onClick={() => handleOpenPaymentForClient(cp)}
+                            className="px-3 py-1 rounded bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs transition"
+                          >
+                            Manage / Settle
+                          </button>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
         ) : activeTab === 'ALL' ? (
-          /* ALL Invoices / Transactions Ledger Table */
+          /* ALL INVOICES & TRANSACTIONS */
           <div className="bg-white rounded-2xl border border-slate-200/80 overflow-hidden shadow-sm">
             <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
               <div>
@@ -362,85 +612,61 @@ export default function PaymentsPage() {
             <div className="overflow-x-auto">
               <table className="w-full text-left text-xs">
                 <thead>
-                  <tr className="bg-slate-50/80 text-slate-500 font-bold border-b border-slate-200/80 uppercase tracking-wider text-[11px]">
-                    <th className="py-3 px-4">Invoice #</th>
-                    <th className="py-3 px-4">Client</th>
-                    <th className="py-3 px-4">Session / Package Type</th>
-                    <th className="py-3 px-4">Amount</th>
-                    <th className="py-3 px-4">Payment Method</th>
-                    <th className="py-3 px-4">Date</th>
-                    <th className="py-3 px-4">Status</th>
-                    <th className="py-3 px-4 text-right">Receipt</th>
+                  <tr className="bg-slate-50 text-slate-500 font-bold uppercase tracking-wider border-b border-slate-200">
+                    <th className="py-3 px-4">Invoice No</th>
+                    <th className="py-3 px-4">Client Name</th>
+                    <th className="py-3 px-4">Payment Date</th>
+                    <th className="py-3 px-4">Method</th>
+                    <th className="py-3 px-4 text-right">Amount Paid</th>
+                    <th className="py-3 px-4 text-right">Balance Left</th>
+                    <th className="py-3 px-4 text-center">Status</th>
+                    <th className="py-3 px-4 text-center">Receipt</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
                   {filteredPayments.length === 0 ? (
                     <tr>
-                      <td colSpan={8} className="py-12 text-center text-slate-400 font-medium">
-                        No payment records found. Click <strong>+ Log Payment</strong> to record an invoice.
+                      <td colSpan={8} className="py-12 text-center text-slate-400">
+                        No transactions found matching your criteria.
                       </td>
                     </tr>
                   ) : (
-                    filteredPayments.map((payment) => (
-                      <tr key={payment.id} className="hover:bg-slate-50/80 transition-colors">
+                    filteredPayments.map((p) => (
+                      <tr key={p.id} className="hover:bg-slate-50 transition">
                         <td className="py-3.5 px-4 font-mono font-bold text-slate-900">
-                          {payment.invoiceNumber || 'INV-PENDING'}
+                          {p.invoiceNumber}
+                        </td>
+                        <td className="py-3.5 px-4 font-bold text-slate-800">
+                          {p.client?.name || 'Walk-in Client'}
+                        </td>
+                        <td className="py-3.5 px-4 text-slate-600">
+                          {formatDate(p.paymentDate)}
                         </td>
                         <td className="py-3.5 px-4">
-                          <Link
-                            href={`/dashboard/clients/${payment.client?.id}`}
-                            className="font-bold text-slate-900 hover:text-emerald-600 transition flex items-center gap-1.5"
-                          >
-                            <span>{payment.client?.name || 'Walk-in Client'}</span>
-                            <span className="text-[10px] font-mono text-slate-400">
-                              ({payment.client?.clientId || 'AUR'})
-                            </span>
-                          </Link>
+                          <span className="px-2 py-0.5 rounded-full bg-slate-100 text-slate-700 font-semibold text-[10px]">
+                            {p.paymentMethod}
+                          </span>
                         </td>
-                        <td className="py-3.5 px-4">
-                          <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold ${
-                            payment.clientPackage?.serviceType === 'PREMIUM'
-                              ? 'bg-amber-100 text-amber-800'
-                              : payment.clientPackage?.serviceType === 'SEMI_PRIVATE'
-                              ? 'bg-purple-100 text-purple-800'
-                              : 'bg-slate-100 text-slate-700'
+                        <td className="py-3.5 px-4 text-right font-black text-emerald-600 text-sm">
+                          {formatCurrency(p.amount)}
+                        </td>
+                        <td className="py-3.5 px-4 text-right font-bold text-slate-600">
+                          {formatCurrency(p.balanceRemaining || 0)}
+                        </td>
+                        <td className="py-3.5 px-4 text-center">
+                          <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                            p.status === 'PAID' ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'
                           }`}>
-                            {payment.clientPackage?.serviceType === 'PREMIUM' ? 'Private 1:1' : 'Semi-Private 1:4'} • {payment.clientPackage?.name || 'General Session'}
+                            {p.status}
                           </span>
                         </td>
-                        <td className="py-3.5 px-4 font-extrabold text-slate-900">
-                          {payment.isRefund ? (
-                            <span className="text-rose-600">- {formatCurrency(payment.amount)} (Refund)</span>
-                          ) : (
-                            <span className="text-emerald-600">+ {formatCurrency(payment.amount)}</span>
-                          )}
-                        </td>
-                        <td className="py-3.5 px-4">
-                          <span className="font-semibold text-slate-700 bg-slate-100 px-2 py-0.5 rounded text-[11px]">
-                            {payment.paymentMethod}
-                          </span>
-                        </td>
-                        <td className="py-3.5 px-4 text-slate-500 font-medium">
-                          {formatDate(payment.paymentDate)}
-                        </td>
-                        <td className="py-3.5 px-4">
-                          <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-extrabold ${
-                            payment.status === 'PAID'
-                              ? 'bg-emerald-100 text-emerald-700'
-                              : payment.status === 'PARTIAL'
-                              ? 'bg-amber-100 text-amber-700'
-                              : 'bg-rose-100 text-rose-700'
-                          }`}>
-                            {payment.status === 'PAID' ? '✓ FULLY PAID' : payment.status}
-                          </span>
-                        </td>
-                        <td className="py-3.5 px-4 text-right">
+                        <td className="py-3.5 px-4 text-center">
                           <button
-                            onClick={() => setReceiptModalPayment(payment)}
-                            className="p-1.5 hover:bg-slate-100 rounded-lg text-slate-500 hover:text-slate-900 transition"
-                            title="Print Receipt"
+                            onClick={() => setReceiptModalPayment(p)}
+                            className="p-1.5 rounded-lg text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 transition"
+                            title="Print Invoice Receipt"
                           >
-                            <Printer className="w-4 h-4" />
+                            <Printer className="w-4 h-4 mx-auto" />
                           </button>
                         </td>
                       </tr>
@@ -451,122 +677,84 @@ export default function PaymentsPage() {
             </div>
           </div>
         ) : (
-          /* Tabbed Client Billing Cards & Tables (Active Paid / Yet to Pay / Private / Semi-Private) */
+          /* CATEGORY FILTERED PACKAGES (SEMI_PRIVATE, PREMIUM, LUXURY, PAID) */
           <div className="bg-white rounded-2xl border border-slate-200/80 overflow-hidden shadow-sm">
             <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
               <div>
                 <h3 className="text-sm font-extrabold text-slate-900">
-                  {activeTab === 'PAID' && 'Active Fully Paid Clients (0 Balance Due)'}
-                  {activeTab === 'YET_TO_PAY' && 'Clients Yet to Pay (Outstanding Balance Due)'}
-                  {activeTab === 'PRIVATE' && 'Private Session Clients (1:1 Medical Fitness)'}
-                  {activeTab === 'SEMI_PRIVATE' && 'Semi-Private Session Clients (1:4 Clinical Rehab)'}
+                  {activeTab === 'SEMI_PRIVATE' ? 'Semi-Private (₹12,000) Rostered Clients' :
+                   activeTab === 'PREMIUM' ? 'Premium 1:1 (₹12,000) Rostered Clients' :
+                   activeTab === 'LUXURY' ? 'Luxury (₹46,000) Concierge Clients' : 'Active Settled Clients'}
                 </h3>
-                <p className="text-xs text-slate-400">
-                  {activeTab === 'PAID' && 'Clients who have cleared all session package invoices'}
-                  {activeTab === 'YET_TO_PAY' && 'Clients with pending balance requiring payment collection'}
-                  {activeTab === 'PRIVATE' && '1:1 Private coaching clients and their financial status'}
-                  {activeTab === 'SEMI_PRIVATE' && '1:4 Semi-Private group clients and their financial status'}
-                </p>
+                <p className="text-xs text-slate-400">Package memberships, remaining sessions, and dues</p>
               </div>
-              <span className="text-xs font-bold text-slate-600 bg-slate-100 px-3 py-1 rounded-full">
-                {filteredClientPackages.length} Enrolled
-              </span>
             </div>
 
             <div className="overflow-x-auto">
               <table className="w-full text-left text-xs">
                 <thead>
-                  <tr className="bg-slate-50/80 text-slate-500 font-bold border-b border-slate-200/80 uppercase tracking-wider text-[11px]">
-                    <th className="py-3 px-4">Client</th>
-                    <th className="py-3 px-4">Enrolled Package</th>
-                    <th className="py-3 px-4">Service Type</th>
-                    <th className="py-3 px-4">Sessions Balance</th>
-                    <th className="py-3 px-4">Amount Paid</th>
-                    <th className="py-3 px-4">Balance Due</th>
-                    <th className="py-3 px-4">Payment Status</th>
-                    <th className="py-3 px-4 text-right">Action</th>
+                  <tr className="bg-slate-50 text-slate-500 font-bold uppercase tracking-wider border-b border-slate-200">
+                    <th className="py-3 px-4">Client ID</th>
+                    <th className="py-3 px-4">Client Name</th>
+                    <th className="py-3 px-4">Contact</th>
+                    <th className="py-3 px-4 text-center">Sessions</th>
+                    <th className="py-3 px-4 text-right">Package Cost</th>
+                    <th className="py-3 px-4 text-right">Paid</th>
+                    <th className="py-3 px-4 text-right">Remaining Due</th>
+                    <th className="py-3 px-4">Expiry Date</th>
+                    <th className="py-3 px-4 text-center">Action</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
-                  {filteredClientPackages.length === 0 ? (
+                  {getDisplayClientPackages().length === 0 ? (
                     <tr>
-                      <td colSpan={8} className="py-12 text-center text-slate-400 font-medium">
+                      <td colSpan={9} className="py-12 text-center text-slate-400">
                         No clients found in this category.
                       </td>
                     </tr>
                   ) : (
-                    filteredClientPackages.map((pkg) => {
-                      const isFullyPaid = (pkg.balanceRemaining || 0) <= 0;
-                      return (
-                        <tr key={pkg.id} className="hover:bg-slate-50/80 transition-colors">
-                          <td className="py-3.5 px-4">
-                            <Link
-                              href={`/dashboard/clients/${pkg.client?.id}`}
-                              className="font-bold text-slate-900 hover:text-emerald-600 transition block"
-                            >
-                              {pkg.client?.name}
-                            </Link>
-                            <span className="text-[10px] font-mono text-slate-400">
-                              {pkg.client?.clientId} • {pkg.client?.phone}
-                            </span>
-                          </td>
-                          <td className="py-3.5 px-4 font-semibold text-slate-800">
-                            {pkg.name}
-                          </td>
-                          <td className="py-3.5 px-4">
-                            <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-extrabold ${
-                              pkg.serviceType === 'PREMIUM'
-                                ? 'bg-amber-100 text-amber-800'
-                                : 'bg-purple-100 text-purple-800'
-                            }`}>
-                              {pkg.serviceType === 'PREMIUM' ? 'Private 1:1' : 'Semi-Private 1:4'}
-                            </span>
-                          </td>
-                          <td className="py-3.5 px-4">
-                            <span className="font-extrabold text-slate-900">
-                              {pkg.sessionsRemaining} / {pkg.totalSessions}
-                            </span>
-                            <span className="text-[10px] text-slate-400 block">sessions left</span>
-                          </td>
-                          <td className="py-3.5 px-4 font-bold text-emerald-600">
-                            {formatCurrency(pkg.pricePaid || 0)}
-                          </td>
-                          <td className="py-3.5 px-4">
-                            {isFullyPaid ? (
-                              <span className="text-emerald-600 font-extrabold flex items-center gap-1">
-                                <CheckCircle2 className="w-3.5 h-3.5" />
-                                ₹0 (Nil)
-                              </span>
-                            ) : (
-                              <span className="text-rose-600 font-black text-sm">
-                                {formatCurrency(pkg.balanceRemaining)}
-                              </span>
-                            )}
-                          </td>
-                          <td className="py-3.5 px-4">
-                            <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-extrabold ${
-                              isFullyPaid
-                                ? 'bg-emerald-100 text-emerald-800'
-                                : 'bg-rose-100 text-rose-700 animate-pulse'
-                            }`}>
-                              {isFullyPaid ? '✓ FULLY PAID' : '⚠ PENDING PAYMENT'}
-                            </span>
-                          </td>
-                          <td className="py-3.5 px-4 text-right">
-                            <button
-                              onClick={() => handleOpenPaymentForClient(pkg)}
-                              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition shadow-sm ${
-                                isFullyPaid
-                                  ? 'bg-slate-100 hover:bg-slate-200 text-slate-700'
-                                  : 'bg-rose-600 hover:bg-rose-500 text-white'
-                              }`}
-                            >
-                              {isFullyPaid ? '+ Add Bill' : 'Collect Due'}
-                            </button>
-                          </td>
-                        </tr>
-                      );
-                    })
+                    getDisplayClientPackages().map((cp) => (
+                      <tr key={cp.id} className="hover:bg-slate-50 transition">
+                        <td className="py-3.5 px-4 font-mono font-bold text-slate-800">
+                          {cp.client?.clientId}
+                        </td>
+                        <td className="py-3.5 px-4">
+                          <Link href={`/dashboard/clients/${cp.clientId}`} className="font-extrabold text-slate-900 hover:text-emerald-600 transition">
+                            {cp.client?.name}
+                          </Link>
+                        </td>
+                        <td className="py-3.5 px-4 text-slate-600">
+                          {cp.client?.phone}
+                        </td>
+                        <td className="py-3.5 px-4 text-center font-bold text-slate-700">
+                          {cp.sessionsRemaining} / {cp.totalSessions}
+                        </td>
+                        <td className="py-3.5 px-4 text-right font-bold text-slate-700">
+                          {formatCurrency(cp.packageAmount || (cp.serviceType === 'LUXURY' ? 46000 : 12000))}
+                        </td>
+                        <td className="py-3.5 px-4 text-right font-bold text-emerald-600">
+                          {formatCurrency(cp.amountPaid || 0)}
+                        </td>
+                        <td className="py-3.5 px-4 text-right font-bold">
+                          {cp.balanceRemaining > 0 ? (
+                            <span className="text-rose-600 font-black">{formatCurrency(cp.balanceRemaining)}</span>
+                          ) : (
+                            <span className="text-emerald-600">₹0 (Paid)</span>
+                          )}
+                        </td>
+                        <td className="py-3.5 px-4 text-slate-600">
+                          {formatDate(cp.expiryDate)}
+                        </td>
+                        <td className="py-3.5 px-4 text-center">
+                          <button
+                            onClick={() => handleOpenPaymentForClient(cp)}
+                            className="px-3 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs shadow-sm transition"
+                          >
+                            {cp.balanceRemaining > 0 ? 'Collect Due' : 'Record Payment'}
+                          </button>
+                        </td>
+                      </tr>
+                    ))
                   )}
                 </tbody>
               </table>
@@ -574,25 +762,27 @@ export default function PaymentsPage() {
           </div>
         )}
 
-        {/* Modal: Record Payment */}
+        {/* Modal: Record / Collect Payment */}
         {showRecordModal && (
-          <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
-            <div className="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl border border-slate-200 animate-in fade-in-50 zoom-in-95">
-              <div className="flex items-center justify-between pb-4 border-b border-slate-100">
+          <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+            <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-slate-200 animate-in fade-in zoom-in-95">
+              <div className="flex items-center justify-between pb-3 border-b border-slate-100">
                 <div className="flex items-center gap-2">
                   <div className="w-8 h-8 rounded-lg bg-emerald-100 text-emerald-600 flex items-center justify-center">
-                    <Receipt className="w-4 h-4" />
+                    <DollarSign className="w-5 h-5" />
                   </div>
                   <div>
-                    <h3 className="text-base font-extrabold text-slate-900">Record Payment Invoice</h3>
-                    <p className="text-xs text-slate-400">Log incoming client collection & update session balance</p>
+                    <h3 className="font-black text-slate-900 text-sm">
+                      {selectedClientForPayment ? `Collect Due Payment` : `Record Client Payment`}
+                    </h3>
+                    <p className="text-[11px] text-slate-400">Generate instant official receipt</p>
                   </div>
                 </div>
                 <button
                   onClick={() => setShowRecordModal(false)}
-                  className="p-1 hover:bg-slate-100 rounded-lg text-slate-400 hover:text-slate-600"
+                  className="text-slate-400 hover:text-slate-700"
                 >
-                  <X className="w-5 h-5" />
+                  <X className="w-4 h-4" />
                 </button>
               </div>
 
@@ -611,7 +801,7 @@ export default function PaymentsPage() {
                     <option value="">-- Choose Client --</option>
                     {allClients.map((c) => (
                       <option key={c.id} value={c.id}>
-                        {c.name} ({c.clientId}) — {c.phone}
+                        {c.name} ({c.clientId}) – {c.phone}
                       </option>
                     ))}
                   </select>
@@ -626,7 +816,7 @@ export default function PaymentsPage() {
                     <span className="absolute left-3 top-2 text-xs font-bold text-slate-400">₹</span>
                     <input
                       type="number"
-                      placeholder="e.g. 24000"
+                      placeholder="e.g. 12000"
                       value={form.amount}
                       onChange={(e) => setForm({ ...form, amount: e.target.value })}
                       className="w-full pl-7 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-extrabold text-slate-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
@@ -659,7 +849,7 @@ export default function PaymentsPage() {
                   </label>
                   <input
                     type="text"
-                    placeholder="e.g. UPI Ref: 4892749219 / 12-session Semi-Private"
+                    placeholder="e.g. UPI Ref / Full payment for Semi-Private"
                     value={form.notes}
                     onChange={(e) => setForm({ ...form, notes: e.target.value })}
                     className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
@@ -689,7 +879,7 @@ export default function PaymentsPage() {
         {/* Modal: Printable Receipt */}
         {receiptModalPayment && (
           <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
-            <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-slate-200 animate-in fade-in-50 zoom-in-95">
+            <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-slate-200 animate-in fade-in zoom-in-95">
               <div className="text-center pb-4 border-b border-slate-100">
                 <div className="w-12 h-12 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center mx-auto mb-2 font-black text-lg">
                   ✓
@@ -720,8 +910,8 @@ export default function PaymentsPage() {
                   <span className="font-medium text-slate-700">{formatDate(receiptModalPayment.paymentDate)}</span>
                 </div>
                 <div className="flex justify-between py-1 border-b border-slate-50">
-                  <span className="text-slate-400">Balance Remaining:</span>
-                  <span className="font-bold text-slate-900">{formatCurrency(receiptModalPayment.balanceRemaining || 0)}</span>
+                  <span className="text-slate-400">Remaining Balance:</span>
+                  <span className="font-bold text-rose-600">{formatCurrency(receiptModalPayment.balanceRemaining || 0)}</span>
                 </div>
               </div>
 

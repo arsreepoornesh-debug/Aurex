@@ -2,7 +2,7 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { useSession, signOut } from 'next-auth/react';
 import { 
   ChevronDown, 
@@ -19,20 +19,23 @@ import {
   Package,
   Layers,
   Sparkles,
+  Crown,
   ClipboardList,
   ShieldAlert,
-  History
+  History,
+  AlertCircle,
+  Clock
 } from 'lucide-react';
 
 interface DropdownItem {
   label: string;
   href: string;
   icon?: any;
-  roleRestriction?: string[];
 }
 
 export function TopNav() {
   const pathname = usePathname();
+  const router = useRouter();
   const { data: session } = useSession();
   const role = (session?.user as any)?.role || 'OWNER';
 
@@ -52,38 +55,35 @@ export function TopNav() {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
+  // Dropdown menus
   const billingItems: DropdownItem[] = [
-    { label: 'Semi-Private Session Bills', href: '/dashboard/payments?service=SEMI_PRIVATE', icon: CreditCard },
-    { label: 'Premium Session Bills', href: '/dashboard/payments?service=PREMIUM', icon: DollarSign },
-    { label: 'Expenses', href: '/dashboard/expenses', icon: Layers },
-    { label: 'Deleted Bills', href: '/dashboard/payments?status=REFUNDED', icon: ShieldAlert },
+    { label: 'Billing & Due Payments', href: '/dashboard/payments', icon: AlertCircle },
+    { label: 'Semi-Private Bills (₹12k)', href: '/dashboard/payments', icon: Layers },
+    { label: 'Premium 1:1 Bills (₹12k)', href: '/dashboard/payments', icon: Sparkles },
+    { label: 'Luxury Bills (₹46k)', href: '/dashboard/payments', icon: Crown },
+    { label: 'Expenses Ledger', href: '/dashboard/expenses', icon: CreditCard },
   ];
 
   const packageItems: DropdownItem[] = [
-    { label: 'Semi-Private Packages', href: '/dashboard/packages/semi-private', icon: Package },
-    { label: 'Premium Packages', href: '/dashboard/packages/premium', icon: Sparkles },
+    { label: 'All Packages & Roster', href: '/dashboard/packages', icon: Package },
+    { label: 'Semi-Private (₹12,000)', href: '/dashboard/packages/semi-private', icon: Layers },
+    { label: 'Premium 1:1 (₹12,000)', href: '/dashboard/packages/premium', icon: Sparkles },
+    { label: 'Luxury Concierge (₹46,000)', href: '/dashboard/packages/luxury', icon: Crown },
   ];
 
   const reportItems: DropdownItem[] = [
+    { label: 'All Reports & Analytics', href: '/dashboard/reports', icon: FileText },
     { label: 'Client Reports', href: '/dashboard/reports?tab=clients', icon: Users },
     { label: 'Attendance Reports', href: '/dashboard/reports?tab=attendance', icon: Calendar },
-    { label: 'Revenue & Financial', href: '/dashboard/reports?tab=revenue', icon: DollarSign },
-    { label: 'Lead Analytics', href: '/dashboard/reports?tab=leads', icon: FileText },
-    { label: 'Session Utilisation', href: '/dashboard/reports?tab=utilisation', icon: Activity },
+    { label: 'Revenue & Financials', href: '/dashboard/reports?tab=revenue', icon: DollarSign },
   ];
 
   const manageItems: DropdownItem[] = [
-    { label: 'Mark Attendance', href: '/dashboard/attendance', icon: Calendar },
+    { label: 'General Settings', href: '/dashboard/settings', icon: Settings },
+    { label: 'Clinical Specialists', href: '/dashboard/specialists', icon: Users },
+    { label: 'Staff & Roles', href: '/dashboard/staff', icon: Users },
     { label: 'Semi-Private Schedule', href: '/dashboard/schedules/semi-private', icon: Calendar },
     { label: 'Premium Schedule', href: '/dashboard/schedules/premium', icon: Sparkles },
-    { label: 'Semi-Private Packages (Catalog)', href: '/dashboard/packages/semi-private', icon: Package },
-    { label: 'Premium Packages (Catalog)', href: '/dashboard/packages/premium', icon: Sparkles },
-    { label: 'Specialists', href: '/dashboard/specialists', icon: Users },
-    { label: 'Staff / Employees', href: '/dashboard/staff', icon: Users },
-    { label: 'Deleted Client List', href: '/dashboard/clients?filter=deleted', icon: Users },
-    { label: 'Announcements', href: '/dashboard/announcements', icon: FileText },
-    { label: 'Software Settings', href: '/dashboard/settings', icon: Settings },
-    { label: 'Audit Logs', href: '/dashboard/settings?tab=audit', icon: History },
   ];
 
   const isTabActive = (item: string) => {
@@ -94,7 +94,7 @@ export function TopNav() {
     if (item === 'PACKAGES' && pathname.startsWith('/dashboard/packages')) return true;
     if (item === 'ATTENDANCE' && pathname.startsWith('/dashboard/attendance')) return true;
     if (item === 'REPORTS' && pathname.startsWith('/dashboard/reports')) return true;
-    if (item === 'MANAGE' && (pathname.startsWith('/dashboard/schedules') || pathname.startsWith('/dashboard/specialists') || pathname.startsWith('/dashboard/staff') || pathname.startsWith('/dashboard/settings') || pathname.startsWith('/dashboard/announcements'))) return true;
+    if (item === 'MANAGE' && (pathname.startsWith('/dashboard/schedules') || pathname.startsWith('/dashboard/specialists') || pathname.startsWith('/dashboard/staff') || pathname.startsWith('/dashboard/settings'))) return true;
     if (item === 'FORMS' && pathname.startsWith('/dashboard/assessments')) return true;
     return false;
   };
@@ -102,9 +102,9 @@ export function TopNav() {
   const isOwnerOrManager = role === 'OWNER' || role === 'MANAGER';
 
   return (
-    <header ref={navRef} className="sticky top-0 z-40 bg-white border-b border-slate-200 shadow-sm select-none">
+    <header ref={navRef} className="sticky top-0 z-50 bg-white border-b border-slate-200 shadow-sm select-none">
       <div className="w-full px-4 flex items-center justify-between h-14">
-        {/* Left: Brand / Logo */}
+        {/* Left: Brand Logo */}
         <div className="flex items-center gap-3 mr-4 shrink-0">
           <Link href="/dashboard" className="flex items-center gap-2.5 group">
             <div className="w-8 h-8 rounded-lg bg-slate-900 flex items-center justify-center text-emerald-400 font-black shadow-inner group-hover:scale-105 transition-transform">
@@ -121,8 +121,8 @@ export function TopNav() {
           </Link>
         </div>
 
-        {/* Center: Navigation Tabs Bar */}
-        <nav className="flex items-center gap-1 overflow-x-auto py-1 scrollbar-none flex-1 max-w-5xl">
+        {/* Center: Main Nav Links (All fully clickable and directly navigate) */}
+        <nav className="flex items-center gap-1 overflow-x-auto py-1">
           {/* DASHBOARD */}
           <Link
             href="/dashboard"
@@ -135,7 +135,7 @@ export function TopNav() {
             Dashboard
           </Link>
 
-          {/* INQUIRY */}
+          {/* INQUIRY / CRM */}
           <Link
             href="/dashboard/crm"
             className={`px-3 py-1.5 rounded text-xs font-bold transition-colors whitespace-nowrap uppercase tracking-wider ${
@@ -159,29 +159,45 @@ export function TopNav() {
             Clients
           </Link>
 
-          {/* BILLING & PAYMENTS ▼ */}
-          <div className="relative">
-            <button
-              onClick={() => setActiveDropdown(activeDropdown === 'BILLING' ? null : 'BILLING')}
-              className={`flex items-center gap-1 px-3 py-1.5 rounded text-xs font-bold transition-colors whitespace-nowrap uppercase tracking-wider ${
-                isTabActive('BILLING') || activeDropdown === 'BILLING'
-                  ? 'bg-emerald-500 text-white shadow-sm'
-                  : 'text-slate-700 hover:bg-slate-100 hover:text-slate-900'
-              }`}
-            >
-              Billing & Payments
-              <ChevronDown className="w-3.5 h-3.5 ml-0.5" />
-            </button>
+          {/* BILLING & PAYMENTS (Direct Link + Hover Dropdown) */}
+          <div 
+            className="relative"
+            onMouseEnter={() => setActiveDropdown('BILLING')}
+            onMouseLeave={() => setActiveDropdown(null)}
+          >
+            <div className={`flex items-center rounded text-xs font-bold transition-colors whitespace-nowrap uppercase tracking-wider ${
+              isTabActive('BILLING')
+                ? 'bg-emerald-500 text-white shadow-sm'
+                : 'text-slate-700 hover:bg-slate-100 hover:text-slate-900'
+            }`}>
+              <Link
+                href="/dashboard/payments"
+                className="px-2.5 py-1.5 block"
+              >
+                Billing & Payments
+              </Link>
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setActiveDropdown(activeDropdown === 'BILLING' ? null : 'BILLING');
+                }}
+                className="pr-2 py-1.5 text-current hover:opacity-80"
+              >
+                <ChevronDown className="w-3.5 h-3.5" />
+              </button>
+            </div>
+
             {activeDropdown === 'BILLING' && (
-              <div className="absolute left-0 mt-1.5 w-56 bg-white rounded-lg shadow-xl border border-slate-200 py-1 z-50 animate-in fade-in-50 zoom-in-95">
+              <div className="absolute left-0 mt-0.5 w-60 bg-white rounded-xl shadow-2xl border border-slate-200 py-1.5 z-50 animate-in fade-in-50 zoom-in-95">
                 {billingItems.map((item, idx) => (
                   <Link
                     key={idx}
                     href={item.href}
                     onClick={() => setActiveDropdown(null)}
-                    className="flex items-center gap-2.5 px-3.5 py-2 text-xs text-slate-700 hover:bg-slate-50 font-medium transition-colors"
+                    className="flex items-center gap-2.5 px-3.5 py-2 text-xs text-slate-700 hover:bg-emerald-50 hover:text-emerald-700 font-semibold transition-colors"
                   >
-                    {item.icon && <item.icon className="w-4 h-4 text-slate-400" />}
+                    {item.icon && <item.icon className="w-4 h-4 text-emerald-600 shrink-0" />}
                     {item.label}
                   </Link>
                 ))}
@@ -189,29 +205,45 @@ export function TopNav() {
             )}
           </div>
 
-          {/* PACKAGES ▼ */}
-          <div className="relative">
-            <button
-              onClick={() => setActiveDropdown(activeDropdown === 'PACKAGES' ? null : 'PACKAGES')}
-              className={`flex items-center gap-1 px-3 py-1.5 rounded text-xs font-bold transition-colors whitespace-nowrap uppercase tracking-wider ${
-                isTabActive('PACKAGES') || activeDropdown === 'PACKAGES'
-                  ? 'bg-emerald-500 text-white shadow-sm'
-                  : 'text-slate-700 hover:bg-slate-100 hover:text-slate-900'
-              }`}
-            >
-              Packages
-              <ChevronDown className="w-3.5 h-3.5 ml-0.5" />
-            </button>
+          {/* PACKAGES (Direct Link + Hover Dropdown) */}
+          <div 
+            className="relative"
+            onMouseEnter={() => setActiveDropdown('PACKAGES')}
+            onMouseLeave={() => setActiveDropdown(null)}
+          >
+            <div className={`flex items-center rounded text-xs font-bold transition-colors whitespace-nowrap uppercase tracking-wider ${
+              isTabActive('PACKAGES')
+                ? 'bg-emerald-500 text-white shadow-sm'
+                : 'text-slate-700 hover:bg-slate-100 hover:text-slate-900'
+            }`}>
+              <Link
+                href="/dashboard/packages"
+                className="px-2.5 py-1.5 block"
+              >
+                Packages
+              </Link>
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setActiveDropdown(activeDropdown === 'PACKAGES' ? null : 'PACKAGES');
+                }}
+                className="pr-2 py-1.5 text-current hover:opacity-80"
+              >
+                <ChevronDown className="w-3.5 h-3.5" />
+              </button>
+            </div>
+
             {activeDropdown === 'PACKAGES' && (
-              <div className="absolute left-0 mt-1.5 w-52 bg-white rounded-lg shadow-xl border border-slate-200 py-1 z-50 animate-in fade-in-50 zoom-in-95">
+              <div className="absolute left-0 mt-0.5 w-64 bg-white rounded-xl shadow-2xl border border-slate-200 py-1.5 z-50 animate-in fade-in-50 zoom-in-95">
                 {packageItems.map((item, idx) => (
                   <Link
                     key={idx}
                     href={item.href}
                     onClick={() => setActiveDropdown(null)}
-                    className="flex items-center gap-2.5 px-3.5 py-2 text-xs text-slate-700 hover:bg-slate-50 font-medium transition-colors"
+                    className="flex items-center gap-2.5 px-3.5 py-2 text-xs text-slate-700 hover:bg-purple-50 hover:text-purple-700 font-semibold transition-colors"
                   >
-                    {item.icon && <item.icon className="w-4 h-4 text-slate-400" />}
+                    {item.icon && <item.icon className="w-4 h-4 text-purple-600 shrink-0" />}
                     {item.label}
                   </Link>
                 ))}
@@ -231,30 +263,46 @@ export function TopNav() {
             Attendance
           </Link>
 
-          {/* REPORTS ▼ (Owner + Manager only) */}
+          {/* REPORTS */}
           {isOwnerOrManager && (
-            <div className="relative">
-              <button
-                onClick={() => setActiveDropdown(activeDropdown === 'REPORTS' ? null : 'REPORTS')}
-                className={`flex items-center gap-1 px-3 py-1.5 rounded text-xs font-bold transition-colors whitespace-nowrap uppercase tracking-wider ${
-                  isTabActive('REPORTS') || activeDropdown === 'REPORTS'
-                    ? 'bg-emerald-500 text-white shadow-sm'
-                    : 'text-slate-700 hover:bg-slate-100 hover:text-slate-900'
-                }`}
-              >
-                Reports
-                <ChevronDown className="w-3.5 h-3.5 ml-0.5" />
-              </button>
+            <div 
+              className="relative"
+              onMouseEnter={() => setActiveDropdown('REPORTS')}
+              onMouseLeave={() => setActiveDropdown(null)}
+            >
+              <div className={`flex items-center rounded text-xs font-bold transition-colors whitespace-nowrap uppercase tracking-wider ${
+                isTabActive('REPORTS')
+                  ? 'bg-emerald-500 text-white shadow-sm'
+                  : 'text-slate-700 hover:bg-slate-100 hover:text-slate-900'
+              }`}>
+                <Link
+                  href="/dashboard/reports"
+                  className="px-2.5 py-1.5 block"
+                >
+                  Reports
+                </Link>
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setActiveDropdown(activeDropdown === 'REPORTS' ? null : 'REPORTS');
+                  }}
+                  className="pr-2 py-1.5 text-current hover:opacity-80"
+                >
+                  <ChevronDown className="w-3.5 h-3.5" />
+                </button>
+              </div>
+
               {activeDropdown === 'REPORTS' && (
-                <div className="absolute left-0 mt-1.5 w-52 bg-white rounded-lg shadow-xl border border-slate-200 py-1 z-50 animate-in fade-in-50 zoom-in-95">
+                <div className="absolute left-0 mt-0.5 w-56 bg-white rounded-xl shadow-2xl border border-slate-200 py-1.5 z-50 animate-in fade-in-50 zoom-in-95">
                   {reportItems.map((item, idx) => (
                     <Link
                       key={idx}
                       href={item.href}
                       onClick={() => setActiveDropdown(null)}
-                      className="flex items-center gap-2.5 px-3.5 py-2 text-xs text-slate-700 hover:bg-slate-50 font-medium transition-colors"
+                      className="flex items-center gap-2.5 px-3.5 py-2 text-xs text-slate-700 hover:bg-slate-50 font-semibold transition-colors"
                     >
-                      {item.icon && <item.icon className="w-4 h-4 text-slate-400" />}
+                      {item.icon && <item.icon className="w-4 h-4 text-slate-400 shrink-0" />}
                       {item.label}
                     </Link>
                   ))}
@@ -263,30 +311,46 @@ export function TopNav() {
             </div>
           )}
 
-          {/* MANAGE & SETTINGS ▼ (Owner + Manager only) */}
+          {/* MANAGE & SETTINGS */}
           {isOwnerOrManager && (
-            <div className="relative">
-              <button
-                onClick={() => setActiveDropdown(activeDropdown === 'MANAGE' ? null : 'MANAGE')}
-                className={`flex items-center gap-1 px-3 py-1.5 rounded text-xs font-bold transition-colors whitespace-nowrap uppercase tracking-wider ${
-                  isTabActive('MANAGE') || activeDropdown === 'MANAGE'
-                    ? 'bg-emerald-500 text-white shadow-sm'
-                    : 'text-slate-700 hover:bg-slate-100 hover:text-slate-900'
-                }`}
-              >
-                Manage & Settings
-                <ChevronDown className="w-3.5 h-3.5 ml-0.5" />
-              </button>
+            <div 
+              className="relative"
+              onMouseEnter={() => setActiveDropdown('MANAGE')}
+              onMouseLeave={() => setActiveDropdown(null)}
+            >
+              <div className={`flex items-center rounded text-xs font-bold transition-colors whitespace-nowrap uppercase tracking-wider ${
+                isTabActive('MANAGE')
+                  ? 'bg-emerald-500 text-white shadow-sm'
+                  : 'text-slate-700 hover:bg-slate-100 hover:text-slate-900'
+              }`}>
+                <Link
+                  href="/dashboard/settings"
+                  className="px-2.5 py-1.5 block"
+                >
+                  Manage & Settings
+                </Link>
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setActiveDropdown(activeDropdown === 'MANAGE' ? null : 'MANAGE');
+                  }}
+                  className="pr-2 py-1.5 text-current hover:opacity-80"
+                >
+                  <ChevronDown className="w-3.5 h-3.5" />
+                </button>
+              </div>
+
               {activeDropdown === 'MANAGE' && (
-                <div className="absolute right-0 mt-1.5 w-60 bg-white rounded-lg shadow-xl border border-slate-200 py-1 z-50 max-h-80 overflow-y-auto animate-in fade-in-50 zoom-in-95">
+                <div className="absolute right-0 mt-0.5 w-60 bg-white rounded-xl shadow-2xl border border-slate-200 py-1.5 z-50 animate-in fade-in-50 zoom-in-95">
                   {manageItems.map((item, idx) => (
                     <Link
                       key={idx}
                       href={item.href}
                       onClick={() => setActiveDropdown(null)}
-                      className="flex items-center gap-2.5 px-3.5 py-2 text-xs text-slate-700 hover:bg-slate-50 font-medium transition-colors"
+                      className="flex items-center gap-2.5 px-3.5 py-2 text-xs text-slate-700 hover:bg-slate-50 font-semibold transition-colors"
                     >
-                      {item.icon && <item.icon className="w-4 h-4 text-slate-400" />}
+                      {item.icon && <item.icon className="w-4 h-4 text-slate-400 shrink-0" />}
                       {item.label}
                     </Link>
                   ))}
@@ -308,34 +372,33 @@ export function TopNav() {
           </Link>
         </nav>
 
-        {/* Right: User Profile & Role Switcher */}
+        {/* Right: User Profile & Role Indicator */}
         <div className="flex items-center gap-3 shrink-0 ml-3">
           <div className="hidden lg:flex flex-col items-end">
             <span className="text-xs font-bold text-slate-800">
-              Welcome, {session?.user?.name || 'Admin'}
+              {session?.user?.name || 'Dr. Siddharth Rao (Owner)'}
             </span>
-            <span className="text-[10px] font-semibold text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200 uppercase tracking-wider">
+            <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200 uppercase tracking-wider">
               {role}
             </span>
           </div>
 
-          {/* User Avatar Menu */}
           <div className="relative">
             <button
               onClick={() => setUserMenuOpen(!userMenuOpen)}
               className="flex items-center gap-1.5 p-1 rounded-full border border-slate-200 hover:border-emerald-500 bg-slate-50 transition-all"
             >
               <div className="w-7 h-7 rounded-full bg-slate-900 text-emerald-400 flex items-center justify-center font-bold text-xs">
-                {(session?.user?.name || 'A')[0].toUpperCase()}
+                {(session?.user?.name || 'O')[0].toUpperCase()}
               </div>
               <ChevronDown className="w-3.5 h-3.5 text-slate-500 mr-1" />
             </button>
 
             {userMenuOpen && (
-              <div className="absolute right-0 mt-2 w-56 bg-white rounded-lg shadow-xl border border-slate-200 py-1.5 z-50 animate-in fade-in-50 zoom-in-95">
+              <div className="absolute right-0 mt-2 w-56 bg-white rounded-xl shadow-xl border border-slate-200 py-1.5 z-50 animate-in fade-in-50 zoom-in-95">
                 <div className="px-3.5 py-2 border-b border-slate-100 mb-1">
                   <div className="font-bold text-xs text-slate-900">{session?.user?.name || 'AUREX Staff'}</div>
-                  <div className="text-[11px] text-slate-500 truncate">{session?.user?.email || 'admin@aurex.com'}</div>
+                  <div className="text-[11px] text-slate-500 truncate">{session?.user?.email || 'owner@aurex.com'}</div>
                   <div className="text-[10px] mt-1 font-bold text-emerald-600 uppercase tracking-wide">Role: {role}</div>
                 </div>
 
