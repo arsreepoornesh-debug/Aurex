@@ -1,3 +1,4 @@
+require('./prepare-db');
 const { execSync, spawn } = require('child_process');
 
 console.log('==============================================');
