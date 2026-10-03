@@ -11,9 +11,10 @@ import {
   CheckCircle2, 
   AlertCircle, 
   Clock, 
-  ShoppingBag,
-  Sparkles,
-  ArrowUpRight
+  Coffee,
+  Car,
+  FileText,
+  PackageCheck
 } from 'lucide-react';
 import { formatCurrency, formatDate } from '@/lib/utils';
 
@@ -37,8 +38,14 @@ export function ReceptionistExpensesWidget() {
   const [spentOn, setSpentOn] = useState('');
   const [amount, setAmount] = useState('');
   const [expenseDate, setExpenseDate] = useState(todayStr);
-  const [category, setCategory] = useState('FRONT_DESK');
-  const [showForm, setShowForm] = useState(true);
+  const [category, setCategory] = useState('FOOD');
+
+  const quickPresets = [
+    { label: '🍔 Food & Meals', category: 'FOOD', example: 'Staff lunch / meals for company sake' },
+    { label: '🚕 Travel & Cab', category: 'TRAVEL', example: 'Auto / cab travel for company errands' },
+    { label: '🏢 Office Supplies', category: 'OFFICE_SUPPLIES', example: 'Stationery, print paper & desk supplies' },
+    { label: '📦 Courier', category: 'COURIER', example: 'Courier charges & package dispatch' },
+  ];
 
   async function fetchExpenses() {
     try {
@@ -93,8 +100,7 @@ export function ReceptionistExpensesWidget() {
         setSpentOn('');
         setAmount('');
         setExpenseDate(todayStr);
-        setCategory('FRONT_DESK');
-        setMessage({ type: 'success', text: `Logged ₹${numAmount.toLocaleString()} for "${newExpense.description}"` });
+        setMessage({ type: 'success', text: `Saved ₹${numAmount.toLocaleString()} for "${newExpense.description}"` });
         setTimeout(() => setMessage(null), 4000);
       } else {
         const err = await res.json();
@@ -133,6 +139,25 @@ export function ReceptionistExpensesWidget() {
   const totalSpentToday = todayExpenses.reduce((sum, e) => sum + (e.amount || 0), 0);
   const totalAllTime = expenses.reduce((sum, e) => sum + (e.amount || 0), 0);
 
+  function renderCategoryBadge(cat: string) {
+    switch (cat) {
+      case 'FOOD':
+        return <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200">🍔 Food & Meals</span>;
+      case 'TRAVEL':
+        return <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-200">🚕 Travel & Cab</span>;
+      case 'OFFICE_SUPPLIES':
+        return <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-700 border border-indigo-200">🏢 Office Supplies</span>;
+      case 'COURIER':
+        return <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-purple-50 text-purple-700 border border-purple-200">📦 Courier</span>;
+      case 'CLEANING':
+        return <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-teal-50 text-teal-700 border border-teal-200">🧹 Cleaning</span>;
+      case 'MAINTENANCE':
+        return <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-orange-50 text-orange-700 border border-orange-200">🔧 Maintenance</span>;
+      default:
+        return <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-700 border border-slate-200">🏷️ {cat.replace('_', ' ')}</span>;
+    }
+  }
+
   return (
     <div className="bg-white rounded-2xl border border-slate-200/90 shadow-sm overflow-hidden animate-in fade-in-50">
       {/* Header Banner */}
@@ -144,14 +169,14 @@ export function ReceptionistExpensesWidget() {
           <div>
             <div className="flex items-center gap-2">
               <h3 className="text-base font-bold text-white tracking-tight">
-                Reception Daily Expenses & Petty Cash
+                Reception Daily Expenses & Company Out-of-Pocket
               </h3>
               <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-400 border border-amber-500/30">
-                Front Desk Terminal
+                Front Desk Quick Manage
               </span>
             </div>
             <p className="text-xs text-slate-400 mt-0.5">
-              Record daily clinic expenditures, consumables, supplies, and petty cash spent
+              Log expenditures made for company sake (Food, Travel, Logistics, Supplies) with exact amount and date
             </p>
           </div>
         </div>
@@ -207,27 +232,75 @@ export function ReceptionistExpensesWidget() {
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-0 divide-y lg:divide-y-0 lg:divide-x divide-slate-100">
         {/* Left Column: Add Expense Form (5 cols) */}
         <div className="lg:col-span-5 p-5 bg-slate-50/60">
-          <div className="flex items-center gap-2 mb-3.5">
-            <div className="w-6 h-6 rounded-lg bg-emerald-500/10 text-emerald-600 flex items-center justify-center">
-              <Plus className="w-3.5 h-3.5 font-bold" />
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-2">
+              <div className="w-6 h-6 rounded-lg bg-emerald-500/10 text-emerald-600 flex items-center justify-center">
+                <Plus className="w-3.5 h-3.5 font-bold" />
+              </div>
+              <h4 className="text-xs font-bold text-slate-900 uppercase tracking-wider">
+                Add Company Expense
+              </h4>
             </div>
-            <h4 className="text-xs font-bold text-slate-900 uppercase tracking-wider">
-              Add New Expense
-            </h4>
+          </div>
+
+          {/* Quick Preset Buttons (Food, Travel, etc.) */}
+          <div className="mb-3.5">
+            <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1.5">
+              Quick Select (Company Sake):
+            </div>
+            <div className="grid grid-cols-2 gap-1.5">
+              {quickPresets.map((preset) => (
+                <button
+                  key={preset.category}
+                  type="button"
+                  onClick={() => {
+                    setCategory(preset.category);
+                    if (!spentOn) setSpentOn(preset.example);
+                  }}
+                  className={`px-2.5 py-1.5 rounded-lg text-[11px] font-bold text-left transition border flex items-center justify-between ${
+                    category === preset.category
+                      ? 'bg-emerald-50 text-emerald-800 border-emerald-300 shadow-2xs'
+                      : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100'
+                  }`}
+                >
+                  <span>{preset.label}</span>
+                </button>
+              ))}
+            </div>
           </div>
 
           <form onSubmit={handleAddExpense} className="space-y-3.5">
+            {/* Category Select */}
+            <div>
+              <label className="block text-xs font-bold text-slate-700 mb-1">
+                Expense Category <span className="text-rose-500">*</span>
+              </label>
+              <select
+                value={category}
+                onChange={(e) => setCategory(e.target.value)}
+                className="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs text-slate-900 font-semibold focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition shadow-2xs"
+              >
+                <option value="FOOD">🍔 Food & Refreshments (Staff Meals, Client Snacks, Company Sake)</option>
+                <option value="TRAVEL">🚕 Travel & Conveyance (Cab, Auto, Fuel, Company Errands)</option>
+                <option value="OFFICE_SUPPLIES">🏢 Office & Front Desk Supplies (Stationery, Paper)</option>
+                <option value="COURIER">📦 Courier, Postage & Document Dispatch</option>
+                <option value="CLEANING">🧹 Cleaning, Towels & Sanitization Materials</option>
+                <option value="MAINTENANCE">🔧 Clinic Repairs & Petty Maintenance</option>
+                <option value="OTHER">🏷️ Other Company Official Out-of-Pocket</option>
+              </select>
+            </div>
+
             {/* Spent On (Description) */}
             <div>
               <label className="block text-xs font-bold text-slate-700 mb-1">
-                Spent On <span className="text-rose-500">*</span>
+                Spent On (Purpose / Item) <span className="text-rose-500">*</span>
               </label>
               <input
                 type="text"
                 required
                 value={spentOn}
                 onChange={(e) => setSpentOn(e.target.value)}
-                placeholder="e.g. Bottled Water 20L, Cleaning Sanitizer, Courier"
+                placeholder="e.g. Staff lunch for meeting, cab travel for pickup, drinking water"
                 className="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs text-slate-900 placeholder-slate-400 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition shadow-2xs"
               />
             </div>
@@ -236,7 +309,7 @@ export function ReceptionistExpensesWidget() {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
                 <label className="block text-xs font-bold text-slate-700 mb-1">
-                  How Much Spent (₹) <span className="text-rose-500">*</span>
+                  Amount Spent (₹) <span className="text-rose-500">*</span>
                 </label>
                 <div className="relative">
                   <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 font-bold text-xs">
@@ -257,7 +330,7 @@ export function ReceptionistExpensesWidget() {
 
               <div>
                 <label className="block text-xs font-bold text-slate-700 mb-1">
-                  Date <span className="text-rose-500">*</span>
+                  Date of Expense <span className="text-rose-500">*</span>
                 </label>
                 <input
                   type="date"
@@ -269,26 +342,6 @@ export function ReceptionistExpensesWidget() {
               </div>
             </div>
 
-            {/* Category */}
-            <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1">
-                Expense Category
-              </label>
-              <select
-                value={category}
-                onChange={(e) => setCategory(e.target.value)}
-                className="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs text-slate-900 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition shadow-2xs font-medium"
-              >
-                <option value="FRONT_DESK">Front Desk & Office Supplies</option>
-                <option value="REFRESHMENTS">Refreshments, Water & Beverages</option>
-                <option value="CLEANING">Cleaning, Towels & Sanitization</option>
-                <option value="COURIER">Courier, Postage & Logistics</option>
-                <option value="FIRST_AID">Medical Consumables & First Aid</option>
-                <option value="MAINTENANCE">Facility Repair & Petty Maintenance</option>
-                <option value="OTHER">Other Operational Expense</option>
-              </select>
-            </div>
-
             {/* Submit Button */}
             <button
               type="submit"
@@ -296,7 +349,7 @@ export function ReceptionistExpensesWidget() {
               className="w-full py-2.5 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 disabled:opacity-60 text-white text-xs font-bold transition flex items-center justify-center gap-2 shadow-sm"
             >
               <Plus className="w-4 h-4" />
-              <span>{submitting ? 'Saving Expense...' : 'Save Front Desk Expense'}</span>
+              <span>{submitting ? 'Recording Expense...' : 'Save Expense'}</span>
             </button>
           </form>
         </div>
@@ -323,7 +376,7 @@ export function ReceptionistExpensesWidget() {
                   <thead className="bg-slate-100/80 text-slate-600 uppercase text-[10px] font-bold tracking-wider sticky top-0 z-10 border-b border-slate-200">
                     <tr>
                       <th className="py-2 px-3">Date</th>
-                      <th className="py-2 px-3">Spent On</th>
+                      <th className="py-2 px-3">Spent On (Purpose)</th>
                       <th className="py-2 px-3">Category</th>
                       <th className="py-2 px-3 text-right">Amount</th>
                       <th className="py-2 px-3 text-center">Action</th>
@@ -339,7 +392,7 @@ export function ReceptionistExpensesWidget() {
                     ) : expenses.length === 0 ? (
                       <tr>
                         <td colSpan={5} className="py-8 text-center text-slate-400 italic">
-                          No expenses recorded yet. Use the form on the left to add daily expenditures.
+                          No company expenses recorded yet. Use the form on the left to add Food, Travel, or Supplies.
                         </td>
                       </tr>
                     ) : (
@@ -351,10 +404,8 @@ export function ReceptionistExpensesWidget() {
                           <td className="py-2.5 px-3 font-semibold text-slate-900">
                             {item.description}
                           </td>
-                          <td className="py-2.5 px-3">
-                            <span className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 border border-slate-200 whitespace-nowrap">
-                              {item.category.replace('_', ' ')}
-                            </span>
+                          <td className="py-2.5 px-3 whitespace-nowrap">
+                            {renderCategoryBadge(item.category)}
                           </td>
                           <td className="py-2.5 px-3 text-right font-bold text-slate-900 font-mono whitespace-nowrap">
                             {formatCurrency(item.amount)}

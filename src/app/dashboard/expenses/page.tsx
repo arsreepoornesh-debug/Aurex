@@ -113,11 +113,17 @@ export default function ExpensesPage() {
               className="w-full bg-white/10 border border-white/20 rounded px-2.5 py-1 text-white text-xs outline-none"
             >
               <option value="ALL" className="text-slate-900">—All Categories—</option>
-              <option value="OPERATIONAL" className="text-slate-900">Operational Overheads</option>
-              <option value="EQUIPMENT" className="text-slate-900">Clinical Equipment</option>
+              <option value="FOOD" className="text-slate-900">🍔 Food & Meals (Company Sake)</option>
+              <option value="TRAVEL" className="text-slate-900">🚕 Travel & Cab (Company Errands)</option>
+              <option value="OFFICE_SUPPLIES" className="text-slate-900">🏢 Office & Desk Supplies</option>
+              <option value="COURIER" className="text-slate-900">📦 Courier & Shipping</option>
+              <option value="CLEANING" className="text-slate-900">🧹 Cleaning & Sanitization</option>
+              <option value="OPERATIONAL" className="text-slate-900">⚙️ Operational Overheads</option>
+              <option value="EQUIPMENT" className="text-slate-900">🏥 Clinical Equipment</option>
               <option value="SALARIES" className="text-slate-900">Specialist / Staff Salaries</option>
               <option value="MAINTENANCE" className="text-slate-900">Facility Maintenance</option>
               <option value="UTILITIES" className="text-slate-900">Utilities & Electricity</option>
+              <option value="OTHER" className="text-slate-900">🏷️ Other Company Expense</option>
             </select>
           </div>
 
@@ -231,11 +237,15 @@ export default function ExpensesPage() {
                     onChange={(e) => setForm({ ...form, category: e.target.value })}
                     className="w-full bg-slate-50 border border-slate-300 rounded p-2 text-xs text-slate-900 focus:bg-white focus:border-blue-500 outline-none"
                   >
-                    <option value="OPERATIONAL">Operational Overheads</option>
-                    <option value="EQUIPMENT">Clinical Equipment</option>
-                    <option value="SALARIES">Specialist / Staff Salaries</option>
-                    <option value="MAINTENANCE">Facility Maintenance</option>
-                    <option value="UTILITIES">Utilities & Electricity</option>
+                    <option value="FOOD">🍔 Food & Meals (Company Sake)</option>
+                    <option value="TRAVEL">🚕 Travel & Cab (Company Errands)</option>
+                    <option value="OFFICE_SUPPLIES">🏢 Office & Front Desk Supplies</option>
+                    <option value="COURIER">📦 Courier & Shipping</option>
+                    <option value="CLEANING">🧹 Cleaning & Sanitization</option>
+                    <option value="OPERATIONAL">⚙️ Operational Overheads</option>
+                    <option value="EQUIPMENT">🏥 Clinical Equipment</option>
+                    <option value="MAINTENANCE">🔧 Facility Maintenance</option>
+                    <option value="OTHER">🏷️ Other Company Expense</option>
                   </select>
                 </div>
               </div>

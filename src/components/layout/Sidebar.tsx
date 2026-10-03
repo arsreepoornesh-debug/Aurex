@@ -34,7 +34,8 @@ import {
   Lock,
   Eye,
   EyeOff,
-  X
+  X,
+  Receipt
 } from 'lucide-react';
 import { canViewReports } from '@/lib/rbac';
 
@@ -127,6 +128,18 @@ export function Sidebar() {
       badge: counts.pendingLeads ? String(counts.pendingLeads) : undefined,
       badgeColor: 'bg-amber-500/20 text-amber-400 border-amber-500/30',
     },
+    ...(userRole === 'RECEPTIONIST'
+      ? [
+          {
+            id: 'expenses',
+            name: 'Expenses',
+            href: '/dashboard/expenses',
+            icon: Receipt,
+            badge: undefined,
+            badgeColor: 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30',
+          },
+        ]
+      : []),
     {
       id: 'renewals',
       name: 'Upcoming Renewals',
