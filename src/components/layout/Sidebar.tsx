@@ -30,7 +30,11 @@ import {
   User,
   CalendarCheck,
   ShieldCheck,
-  Settings
+  Settings,
+  Lock,
+  Eye,
+  EyeOff,
+  X
 } from 'lucide-react';
 import { canViewReports } from '@/lib/rbac';
 
@@ -157,24 +161,73 @@ export function Sidebar() {
     },
   ];
 
-  function handleRoleSwitch(targetRole: string) {
-    let email = 'receptionist@aurex.com';
-    let pass = 'AurexRecp@2026';
-    if (targetRole === 'OWNER') {
-      email = 'owner@aurex.com';
-      pass = 'AurexOwner@2026';
-    } else if (targetRole === 'MANAGER') {
-      email = 'manager@aurex.com';
-      pass = 'AurexManager@2026';
+  const [pendingRole, setPendingRole] = useState<string | null>(null);
+  const [passwordInput, setPasswordInput] = useState('');
+  const [passwordError, setPasswordError] = useState('');
+  const [isAuthenticating, setIsAuthenticating] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+
+  const roleEmails: Record<string, string> = {
+    OWNER: 'owner@aurex.com',
+    MANAGER: 'manager@aurex.com',
+    RECEPTIONIST: 'receptionist@aurex.com',
+  };
+
+  const defaultPasswords: Record<string, string> = {
+    OWNER: 'AurexOwner@2026',
+    MANAGER: 'AurexManager@2026',
+    RECEPTIONIST: 'AurexRecp@2026',
+  };
+
+  function handleRoleClick(targetRole: string) {
+    if (targetRole === userRole) return;
+
+    // IF CURRENT USER IS OWNER: can switch to any role without password!
+    if (userRole === 'OWNER') {
+      const email = roleEmails[targetRole] || 'receptionist@aurex.com';
+      const pass = defaultPasswords[targetRole] || 'AurexRecp@2026';
+      signIn('credentials', {
+        email,
+        password: pass,
+        redirect: false,
+      }).then(() => {
+        window.location.reload();
+      });
+      return;
     }
 
-    signIn('credentials', {
+    // IF CURRENT USER IS MANAGER OR RECEPTIONIST: must enter target role's password!
+    setPendingRole(targetRole);
+    setPasswordInput('');
+    setPasswordError('');
+    setShowPassword(false);
+  }
+
+  async function handleConfirmSwitch(e: React.FormEvent) {
+    e.preventDefault();
+    if (!pendingRole) return;
+    if (!passwordInput.trim()) {
+      setPasswordError('Please enter password');
+      return;
+    }
+
+    setIsAuthenticating(true);
+    setPasswordError('');
+
+    const email = roleEmails[pendingRole] || 'receptionist@aurex.com';
+    const res = await signIn('credentials', {
       email,
-      password: pass,
+      password: passwordInput,
       redirect: false,
-    }).then(() => {
-      window.location.reload();
     });
+
+    if (res?.error) {
+      setIsAuthenticating(false);
+      setPasswordError(`Invalid password for ${pendingRole}`);
+      return;
+    }
+
+    window.location.reload();
   }
 
   const roleColors: Record<string, string> = {
@@ -345,11 +398,13 @@ export function Sidebar() {
             <div className="p-2 rounded-lg bg-slate-900 border border-slate-800">
               <div className="flex items-center justify-between">
                 <div className="truncate">
-                  <p className="text-xs font-bold text-white truncate">
-                    {session?.user?.name || 'Authorized User'}
-                  </p>
+                  {userRole === 'OWNER' && (
+                    <p className="text-xs font-bold text-white truncate">
+                      {session?.user?.name || 'Prasana'}
+                    </p>
+                  )}
                   <p className="text-[10px] text-slate-400 truncate">
-                    {session?.user?.email || 'admin@aurex.com'}
+                    {session?.user?.email || (userRole === 'OWNER' ? 'owner@aurex.com' : userRole === 'MANAGER' ? 'manager@aurex.com' : 'receptionist@aurex.com')}
                   </p>
                 </div>
                 <span
@@ -369,7 +424,8 @@ export function Sidebar() {
                 <div className="flex gap-1">
                   <button
                     type="button"
-                    onClick={() => handleRoleSwitch('OWNER')}
+                    onClick={() => handleRoleClick('OWNER')}
+                    title={userRole === 'OWNER' ? 'Active: Owner' : 'Switch to Owner (Password Required)'}
                     className={`px-1.5 py-0.5 rounded text-[9px] font-bold transition ${
                       userRole === 'OWNER'
                         ? 'bg-emerald-500 text-white'
@@ -380,7 +436,8 @@ export function Sidebar() {
                   </button>
                   <button
                     type="button"
-                    onClick={() => handleRoleSwitch('MANAGER')}
+                    onClick={() => handleRoleClick('MANAGER')}
+                    title={userRole === 'OWNER' ? 'Switch to Manager without password' : 'Switch to Manager (Password Required)'}
                     className={`px-1.5 py-0.5 rounded text-[9px] font-bold transition ${
                       userRole === 'MANAGER'
                         ? 'bg-blue-500 text-white'
@@ -391,7 +448,8 @@ export function Sidebar() {
                   </button>
                   <button
                     type="button"
-                    onClick={() => handleRoleSwitch('RECEPTIONIST')}
+                    onClick={() => handleRoleClick('RECEPTIONIST')}
+                    title={userRole === 'OWNER' ? 'Switch to Receptionist without password' : 'Switch to Receptionist (Password Required)'}
                     className={`px-1.5 py-0.5 rounded text-[9px] font-bold transition ${
                       userRole === 'RECEPTIONIST'
                         ? 'bg-amber-500 text-slate-950'
@@ -416,9 +474,9 @@ export function Sidebar() {
           <div className="flex flex-col items-center gap-2 py-1">
             <div
               className="w-8 h-8 rounded-full bg-slate-800 border border-slate-700 text-white flex items-center justify-center font-bold text-xs"
-              title={`${session?.user?.name} (${userRole})`}
+              title={userRole === 'OWNER' ? `Prasana (${userRole})` : userRole}
             >
-              {session?.user?.name ? session.user.name.charAt(0) : <User className="w-4 h-4" />}
+              {userRole === 'OWNER' ? 'P' : userRole === 'MANAGER' ? 'M' : 'R'}
             </div>
             <button
               onClick={() => signOut({ callbackUrl: '/login' })}
@@ -430,6 +488,91 @@ export function Sidebar() {
           </div>
         )}
       </div>
+
+      {/* Password Authentication Modal for Role Switching */}
+      {pendingRole && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-in fade-in-50">
+          <div className="bg-[#0B1120] border border-[#26354D] rounded-2xl p-6 max-w-sm w-full shadow-2xl relative text-white">
+            <button
+              type="button"
+              onClick={() => {
+                setPendingRole(null);
+                setPasswordInput('');
+                setPasswordError('');
+              }}
+              className="absolute top-4 right-4 text-slate-400 hover:text-white p-1 rounded-lg hover:bg-slate-800 transition"
+            >
+              <X className="w-4 h-4" />
+            </button>
+
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-10 h-10 rounded-xl bg-slate-900 border border-slate-700 flex items-center justify-center text-amber-400 shadow-md">
+                <Lock className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="text-sm font-bold text-white">Authenticate Role Switch</h3>
+                <p className="text-[11px] text-slate-400">
+                  Switching to <span className="font-semibold text-emerald-400">{pendingRole}</span>
+                </p>
+              </div>
+            </div>
+
+            <form onSubmit={handleConfirmSwitch} className="space-y-4">
+              <div>
+                <label className="block text-[11px] font-semibold text-slate-300 mb-1.5">
+                  Enter Password for {roleEmails[pendingRole]}
+                </label>
+                <div className="relative">
+                  <input
+                    type={showPassword ? 'text' : 'password'}
+                    autoFocus
+                    value={passwordInput}
+                    onChange={(e) => {
+                      setPasswordInput(e.target.value);
+                      setPasswordError('');
+                    }}
+                    placeholder={`Enter ${pendingRole.toLowerCase()} password`}
+                    className="w-full bg-[#0F172A] border border-slate-700 rounded-xl px-3.5 py-2.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition pr-10"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white"
+                  >
+                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
+                {passwordError && (
+                  <p className="mt-1.5 text-xs text-rose-400 font-medium flex items-center gap-1">
+                    {passwordError}
+                  </p>
+                )}
+              </div>
+
+              <div className="flex items-center gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setPendingRole(null);
+                    setPasswordInput('');
+                    setPasswordError('');
+                  }}
+                  className="flex-1 px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold transition"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isAuthenticating || !passwordInput}
+                  className="flex-1 px-3 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 disabled:opacity-50 text-slate-950 text-xs font-bold transition flex items-center justify-center gap-1.5 shadow"
+                >
+                  {isAuthenticating ? 'Authenticating...' : 'Confirm Switch'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </aside>
   );
 }

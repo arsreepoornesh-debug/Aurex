@@ -5,7 +5,18 @@ import { AuthProvider } from '@/components/providers/AuthProvider';
 export const metadata: Metadata = {
   title: 'AUREX Clinical Exercise Management System | Admin',
   description: 'Private Clinical Exercise & Medical Fitness Administration Platform',
+  applicationName: 'AUREX',
   manifest: '/manifest.json',
+  icons: {
+    icon: [
+      { url: '/favicon-32x32.png', sizes: '32x32', type: 'image/png' },
+      { url: '/icon-192.png', sizes: '192x192', type: 'image/png' },
+    ],
+    apple: [
+      { url: '/apple-touch-icon.png', sizes: '180x180', type: 'image/png' },
+    ],
+    shortcut: '/favicon.ico',
+  },
   appleWebApp: {
     capable: true,
     statusBarStyle: 'black-translucent',
@@ -15,7 +26,7 @@ export const metadata: Metadata = {
 };
 
 export const viewport = {
-  themeColor: '#10B981',
+  themeColor: '#0A0F1D',
   width: 'device-width',
   initialScale: 1,
   maximumScale: 1,

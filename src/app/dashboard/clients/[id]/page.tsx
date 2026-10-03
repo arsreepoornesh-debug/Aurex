@@ -1134,7 +1134,7 @@ export default function ClientProfilePage() {
                 type="text"
                 value={consentWitness}
                 onChange={(e) => setConsentWitness(e.target.value)}
-                placeholder="Dr. Siddharth Rao"
+                placeholder="Prasana"
                 className="w-full bg-[#0B1120] border border-[#26354D] rounded-xl px-3 py-2 text-xs text-white"
               />
             </div>

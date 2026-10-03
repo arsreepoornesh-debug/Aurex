@@ -27,6 +27,8 @@ import {
   Clock
 } from 'lucide-react';
 
+import { PwaInstallPrompt } from '@/components/pwa/PwaInstallPrompt';
+
 interface DropdownItem {
   label: string;
   href: string;
@@ -374,10 +376,14 @@ export function TopNav() {
 
         {/* Right: User Profile & Role Indicator */}
         <div className="flex items-center gap-3 shrink-0 ml-3">
+          <PwaInstallPrompt />
+
           <div className="hidden lg:flex flex-col items-end">
-            <span className="text-xs font-bold text-slate-800">
-              {session?.user?.name || 'Dr. Siddharth Rao (Owner)'}
-            </span>
+            {role === 'OWNER' && (
+              <span className="text-xs font-bold text-slate-800">
+                {session?.user?.name || 'Prasana'}
+              </span>
+            )}
             <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200 uppercase tracking-wider">
               {role}
             </span>
@@ -389,7 +395,7 @@ export function TopNav() {
               className="flex items-center gap-1.5 p-1 rounded-full border border-slate-200 hover:border-emerald-500 bg-slate-50 transition-all"
             >
               <div className="w-7 h-7 rounded-full bg-slate-900 text-emerald-400 flex items-center justify-center font-bold text-xs">
-                {(session?.user?.name || 'O')[0].toUpperCase()}
+                {role === 'OWNER' ? 'P' : role === 'MANAGER' ? 'M' : 'R'}
               </div>
               <ChevronDown className="w-3.5 h-3.5 text-slate-500 mr-1" />
             </button>
@@ -397,8 +403,12 @@ export function TopNav() {
             {userMenuOpen && (
               <div className="absolute right-0 mt-2 w-56 bg-white rounded-xl shadow-xl border border-slate-200 py-1.5 z-50 animate-in fade-in-50 zoom-in-95">
                 <div className="px-3.5 py-2 border-b border-slate-100 mb-1">
-                  <div className="font-bold text-xs text-slate-900">{session?.user?.name || 'AUREX Staff'}</div>
-                  <div className="text-[11px] text-slate-500 truncate">{session?.user?.email || 'owner@aurex.com'}</div>
+                  {role === 'OWNER' ? (
+                    <div className="font-bold text-xs text-slate-900">{session?.user?.name || 'Prasana'}</div>
+                  ) : (
+                    <div className="font-bold text-xs text-slate-900">{role === 'MANAGER' ? 'Manager Terminal' : 'Reception Terminal'}</div>
+                  )}
+                  <div className="text-[11px] text-slate-500 truncate">{session?.user?.email}</div>
                   <div className="text-[10px] mt-1 font-bold text-emerald-600 uppercase tracking-wide">Role: {role}</div>
                 </div>
 

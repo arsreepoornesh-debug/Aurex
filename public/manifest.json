@@ -1,21 +1,72 @@
-﻿{
-  "name": "AUREX Clinical Management",
+{
+  "id": "/?source=pwa",
+  "name": "AUREX Clinical Exercise Management System",
   "short_name": "AUREX",
-  "description": "Clinical Exercise Management System",
+  "description": "AUREX Medical Fitness, Clinical Exercise Physiology & Active Rehabilitation Platform",
   "start_url": "/dashboard",
-  "display": "standalone",
-  "background_color": "#0A0F1D",
-  "theme_color": "#10B981",
-  "orientation": "portrait-primary",
   "scope": "/",
+  "display": "standalone",
+  "display_override": ["window-controls-overlay", "standalone", "minimal-ui"],
+  "background_color": "#0A0F1D",
+  "theme_color": "#0A0F1D",
+  "orientation": "any",
+  "categories": ["medical", "business", "health", "fitness", "productivity"],
+  "prefer_related_applications": false,
   "icons": [
-    { "src": "/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },
-    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-maskable-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "/apple-touch-icon.png",
+      "sizes": "180x180",
+      "type": "image/png"
+    }
   ],
   "shortcuts": [
-    { "name": "Dashboard", "url": "/dashboard" },
-    { "name": "Clients", "url": "/dashboard/clients" },
-    { "name": "Slot Booking", "url": "/dashboard/slot-booking" },
-    { "name": "Packages", "url": "/dashboard/packages" }
+    {
+      "name": "Today's Schedule",
+      "short_name": "Schedule",
+      "url": "/dashboard/bookings",
+      "icons": [{ "src": "/icon-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Live Attendance",
+      "short_name": "Attendance",
+      "url": "/dashboard/attendance",
+      "icons": [{ "src": "/icon-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Clients 360°",
+      "short_name": "Clients",
+      "url": "/dashboard/clients",
+      "icons": [{ "src": "/icon-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Payments & Billing",
+      "short_name": "Payments",
+      "url": "/dashboard/payments",
+      "icons": [{ "src": "/icon-192.png", "sizes": "192x192" }]
+    }
   ]
 }

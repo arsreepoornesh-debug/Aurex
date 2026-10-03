@@ -52,6 +52,7 @@ import {
 import { Header } from '@/components/layout/Header';
 import { formatCurrency, formatDate, formatDateTime, getServiceMaxCapacity } from '@/lib/utils';
 import { canViewRevenue } from '@/lib/rbac';
+import { ReceptionistExpensesWidget } from '@/components/dashboard/ReceptionistExpensesWidget';
 
 export default function DashboardPage() {
   const { data: session } = useSession();
@@ -903,6 +904,13 @@ export default function DashboardPage() {
             </div>
           </div>
         </div>
+
+        {/* RECEPTIONIST EXCLUSIVE: DAILY EXPENSES & PETTY CASH LEDGER */}
+        {userRole === 'RECEPTIONIST' && (
+          <div className="pt-2">
+            <ReceptionistExpensesWidget />
+          </div>
+        )}
 
         {/* 4. BATCH SEAT AVAILABILITY / SLOT AVAILABILITY SECTION */}
         <div className="space-y-3 pt-2">

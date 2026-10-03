@@ -30,9 +30,9 @@ export async function POST(req: NextRequest) {
 
     await prisma.user.upsert({
       where: { email: 'owner@aurex.com' },
-      update: { passwordHash: passwordOwner, role: 'OWNER', active: true },
+      update: { name: 'Prasana', passwordHash: passwordOwner, role: 'OWNER', active: true },
       create: {
-        name: 'Dr. Siddharth Rao (Owner)',
+        name: 'Prasana',
         email: 'owner@aurex.com',
         passwordHash: passwordOwner,
         role: 'OWNER',
@@ -43,9 +43,9 @@ export async function POST(req: NextRequest) {
 
     await prisma.user.upsert({
       where: { email: 'manager@aurex.com' },
-      update: { passwordHash: passwordManager, role: 'MANAGER', active: true },
+      update: { name: '', passwordHash: passwordManager, role: 'MANAGER', active: true },
       create: {
-        name: 'Kavita Iyer (Manager)',
+        name: '',
         email: 'manager@aurex.com',
         passwordHash: passwordManager,
         role: 'MANAGER',
@@ -56,9 +56,9 @@ export async function POST(req: NextRequest) {
 
     await prisma.user.upsert({
       where: { email: 'receptionist@aurex.com' },
-      update: { passwordHash: passwordReceptionist, role: 'RECEPTIONIST', active: true },
+      update: { name: '', passwordHash: passwordReceptionist, role: 'RECEPTIONIST', active: true },
       create: {
-        name: 'Rohan Deshmukh (Receptionist)',
+        name: '',
         email: 'receptionist@aurex.com',
         passwordHash: passwordReceptionist,
         role: 'RECEPTIONIST',

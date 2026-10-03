@@ -28,7 +28,7 @@ export async function POST(req: NextRequest) {
 
     const owner = await prisma.user.create({
       data: {
-        name: 'Dr. Siddharth Rao (Owner)',
+        name: 'Prasana',
         email: 'owner@aurex.com',
         passwordHash: passwordOwner,
         role: 'OWNER',
@@ -39,7 +39,7 @@ export async function POST(req: NextRequest) {
 
     const manager = await prisma.user.create({
       data: {
-        name: 'Kavita Iyer (Manager)',
+        name: '',
         email: 'manager@aurex.com',
         passwordHash: passwordManager,
         role: 'MANAGER',
@@ -50,7 +50,7 @@ export async function POST(req: NextRequest) {
 
     const receptionist = await prisma.user.create({
       data: {
-        name: 'Rohan Deshmukh (Receptionist)',
+        name: '',
         email: 'receptionist@aurex.com',
         passwordHash: passwordReceptionist,
         role: 'RECEPTIONIST',
