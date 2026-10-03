@@ -14,9 +14,9 @@ async function main() {
   // Upsert Owner
   await prisma.user.upsert({
     where: { email: 'owner@aurex.com' },
-    update: { name: 'Prasana', passwordHash: passwordOwner, role: 'OWNER', active: true },
+    update: { name: 'Prasan', passwordHash: passwordOwner, role: 'OWNER', active: true },
     create: {
-      name: 'Prasana',
+      name: 'Prasan',
       email: 'owner@aurex.com',
       passwordHash: passwordOwner,
       role: 'OWNER',

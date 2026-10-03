@@ -381,7 +381,7 @@ export function TopNav() {
           <div className="hidden lg:flex flex-col items-end">
             {role === 'OWNER' && (
               <span className="text-xs font-bold text-slate-800">
-                {session?.user?.name || 'Prasana'}
+                {session?.user?.name || 'Prasan'}
               </span>
             )}
             <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200 uppercase tracking-wider">
@@ -404,7 +404,7 @@ export function TopNav() {
               <div className="absolute right-0 mt-2 w-56 bg-white rounded-xl shadow-xl border border-slate-200 py-1.5 z-50 animate-in fade-in-50 zoom-in-95">
                 <div className="px-3.5 py-2 border-b border-slate-100 mb-1">
                   {role === 'OWNER' ? (
-                    <div className="font-bold text-xs text-slate-900">{session?.user?.name || 'Prasana'}</div>
+                    <div className="font-bold text-xs text-slate-900">{session?.user?.name || 'Prasan'}</div>
                   ) : (
                     <div className="font-bold text-xs text-slate-900">{role === 'MANAGER' ? 'Manager Terminal' : 'Reception Terminal'}</div>
                   )}

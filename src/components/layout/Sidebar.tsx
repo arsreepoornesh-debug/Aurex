@@ -400,7 +400,7 @@ export function Sidebar() {
                 <div className="truncate">
                   {userRole === 'OWNER' && (
                     <p className="text-xs font-bold text-white truncate">
-                      {session?.user?.name || 'Prasana'}
+                      {session?.user?.name || 'Prasan'}
                     </p>
                   )}
                   <p className="text-[10px] text-slate-400 truncate">
@@ -474,7 +474,7 @@ export function Sidebar() {
           <div className="flex flex-col items-center gap-2 py-1">
             <div
               className="w-8 h-8 rounded-full bg-slate-800 border border-slate-700 text-white flex items-center justify-center font-bold text-xs"
-              title={userRole === 'OWNER' ? `Prasana (${userRole})` : userRole}
+              title={userRole === 'OWNER' ? `Prasan (${userRole})` : userRole}
             >
               {userRole === 'OWNER' ? 'P' : userRole === 'MANAGER' ? 'M' : 'R'}
             </div>

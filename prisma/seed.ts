@@ -34,7 +34,7 @@ async function main() {
 
   const owner = await prisma.user.create({
     data: {
-      name: 'Prasana',
+      name: 'Prasan',
       email: 'owner@aurex.com',
       passwordHash: passwordOwner,
       role: 'OWNER',

@@ -1,5 +1,6 @@
 require('./prepare-db');
 const { execSync, spawn } = require('child_process');
+const { syncUsers } = require('./sync-users');
 
 console.log('==============================================');
 console.log('🚀 Starting AUREX CMS on Railway...');
@@ -23,35 +24,41 @@ if (!process.env.NEXTAUTH_SECRET) {
 
 console.log(`✅ Environment ready: DATABASE_URL=${process.env.DATABASE_URL.substring(0, 30)}...`);
 
+async function runStartup() {
+  // 1. Sync DB Schema (SQLite local / PostgreSQL prod via DATABASE_URL)
+  try {
+    console.log('📦 Pushing database schema...');
+    execSync('npx prisma db push --accept-data-loss', { stdio: 'inherit' });
+    console.log('✅ Database schema synchronized.');
+  } catch (err) {
+    console.error('⚠️ Note on schema push:', err.message);
+  }
 
-// 1. Sync DB Schema (SQLite local / PostgreSQL prod via DATABASE_URL)
-try {
-  console.log('📦 Pushing database schema...');
-  execSync('npx prisma db push --accept-data-loss', { stdio: 'inherit' });
-  console.log('✅ Database schema synchronized.');
-} catch (err) {
-  console.error('⚠️ Note on schema push:', err.message);
+  // 2. Initialize default Staff accounts directly in-process
+  try {
+    console.log('🌱 Initializing staff accounts (Owner: Prasan, Manager, Receptionist)...');
+    await syncUsers();
+    console.log('✅ Staff accounts verified and active.');
+  } catch (err) {
+    console.error('⚠️ Note on seed initialization:', err.message);
+  }
+
+  // 3. Launch Next.js Server on 0.0.0.0 with Railway PORT
+  const port = process.env.PORT || '3000';
+  console.log(`🌐 Starting Next.js listener on host 0.0.0.0:${port}...`);
+
+  const nextApp = spawn('npx', ['next', 'start', '-H', '0.0.0.0', '-p', port], {
+    stdio: 'inherit',
+    shell: true,
+  });
+
+  nextApp.on('close', (code) => {
+    console.log(`Next.js process exited with code ${code}`);
+    process.exit(code || 0);
+  });
 }
 
-// 2. Initialize default Staff accounts if not present
-try {
-  console.log('🌱 Initializing staff accounts (Owner, Manager, Receptionist)...');
-  execSync('npx tsx prisma/clean.ts', { stdio: 'inherit' });
-  console.log('✅ Staff accounts and master packages verified.');
-} catch (err) {
-  console.error('⚠️ Note on seed initialization:', err.message);
-}
-
-// 3. Launch Next.js Server on 0.0.0.0 with Railway PORT
-const port = process.env.PORT || '3000';
-console.log(`🌐 Starting Next.js listener on host 0.0.0.0:${port}...`);
-
-const nextApp = spawn('npx', ['next', 'start', '-H', '0.0.0.0', '-p', port], {
-  stdio: 'inherit',
-  shell: true,
-});
-
-nextApp.on('close', (code) => {
-  console.log(`Next.js process exited with code ${code}`);
-  process.exit(code || 0);
+runStartup().catch((err) => {
+  console.error('Fatal startup error:', err);
+  process.exit(1);
 });
