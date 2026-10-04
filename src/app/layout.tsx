@@ -9,13 +9,12 @@ export const metadata: Metadata = {
   manifest: '/manifest.json',
   icons: {
     icon: [
-      { url: '/favicon-32x32.png', sizes: '32x32', type: 'image/png' },
-      { url: '/icon-192.png', sizes: '192x192', type: 'image/png' },
+      { url: '/Aurex%20logo%201.png', type: 'image/png' },
     ],
     apple: [
-      { url: '/apple-touch-icon.png', sizes: '180x180', type: 'image/png' },
+      { url: '/Aurex%20logo%201.png', type: 'image/png' },
     ],
-    shortcut: '/favicon.ico',
+    shortcut: '/Aurex%20logo%201.png',
   },
   appleWebApp: {
     capable: true,
@@ -40,6 +39,8 @@ export default function RootLayout({
   return (
     <html lang="en" className="dark">
       <head>
+        <link rel="icon" href="/Aurex%20logo%201.png" type="image/png" />
+        <link rel="apple-touch-icon" href="/Aurex%20logo%201.png" />
         <link rel="manifest" href="/manifest.json" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />

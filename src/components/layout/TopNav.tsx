@@ -109,9 +109,11 @@ export function TopNav() {
         {/* Left: Brand Logo */}
         <div className="flex items-center gap-3 mr-4 shrink-0">
           <Link href="/dashboard" className="flex items-center gap-2.5 group">
-            <div className="w-8 h-8 rounded-lg bg-slate-900 flex items-center justify-center text-emerald-400 font-black shadow-inner group-hover:scale-105 transition-transform">
-              A
-            </div>
+            <img
+              src="/Aurex%20logo%201.png"
+              alt="AUREX Logo"
+              className="w-8 h-8 object-contain rounded-lg group-hover:scale-105 transition-transform"
+            />
             <div>
               <span className="font-extrabold text-slate-900 tracking-tight text-base group-hover:text-emerald-600 transition-colors">
                 AUREX

@@ -3,12 +3,7 @@ const PRECACHE_ASSETS = [
   '/',
   '/dashboard',
   '/manifest.json',
-  '/icon-192.png',
-  '/icon-512.png',
-  '/icon-maskable-192.png',
-  '/icon-maskable-512.png',
-  '/apple-touch-icon.png',
-  '/favicon-32x32.png',
+  '/Aurex%20logo%201.png',
 ];
 
 self.addEventListener('install', (event) => {

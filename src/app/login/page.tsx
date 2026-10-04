@@ -70,8 +70,12 @@ export default function LoginPage() {
       <div className="w-full max-w-lg z-10">
         {/* Brand Header */}
         <div className="text-center mb-6">
-          <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-tr from-emerald-600 to-teal-500 shadow-glow-emerald border border-emerald-400/30 mb-4">
-            <Activity className="w-8 h-8 text-white stroke-[2.5]" />
+          <div className="inline-flex items-center justify-center w-20 h-20 mb-4">
+            <img
+              src="/Aurex%20logo%201.png"
+              alt="AUREX Logo"
+              className="w-20 h-20 object-contain drop-shadow-xl"
+            />
           </div>
           <h1 className="text-3xl font-extrabold tracking-tight text-white flex items-center justify-center gap-2">
             AUREX <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 tracking-normal">CLINICAL CMS</span>

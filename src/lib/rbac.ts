@@ -11,7 +11,7 @@ export const PERMISSIONS = {
   // Staff & Specialists Management
   MANAGE_STAFF: ['OWNER'] as Role[], // Only OWNER can delete/create staff
   MANAGE_SPECIALISTS: ['OWNER', 'MANAGER'] as Role[],
-  DELETE_CLIENTS: ['OWNER'] as Role[],
+  DELETE_CLIENTS: ['OWNER', 'MANAGER', 'RECEPTIONIST'] as Role[],
   
   // Operations (Staff)
   VIEW_CLIENTS: ['OWNER', 'MANAGER', 'RECEPTIONIST'] as Role[],
@@ -57,6 +57,10 @@ export function canDeleteStaff(role?: string): boolean {
 
 export function canManageMasterPackages(role?: string): boolean {
   return role === 'OWNER' || role === 'MANAGER';
+}
+
+export function canDeleteClients(role?: string): boolean {
+  return role === 'OWNER' || role === 'MANAGER' || role === 'RECEPTIONIST';
 }
 
 export function forbiddenResponse(message = 'Access Denied: You do not have permission to access this resource') {

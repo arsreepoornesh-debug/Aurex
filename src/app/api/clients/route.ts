@@ -132,7 +132,7 @@ export async function DELETE(req: NextRequest) {
     }
 
     const userRole = (session?.user as any)?.role;
-    if (userRole !== 'OWNER' && userRole !== 'MANAGER') {
+    if (userRole !== 'OWNER' && userRole !== 'MANAGER' && userRole !== 'RECEPTIONIST') {
       return NextResponse.json(
         { error: 'Forbidden: Insufficient permissions to remove clients' },
         { status: 403 }

@@ -14,33 +14,16 @@
   "prefer_related_applications": false,
   "icons": [
     {
-      "src": "/icon-192.png",
-      "sizes": "192x192",
-      "type": "image/png",
-      "purpose": "any"
-    },
-    {
-      "src": "/icon-maskable-192.png",
-      "sizes": "192x192",
-      "type": "image/png",
-      "purpose": "maskable"
-    },
-    {
-      "src": "/icon-512.png",
+      "src": "/Aurex%20logo%201.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "/icon-maskable-512.png",
+      "src": "/Aurex%20logo%201.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "maskable"
-    },
-    {
-      "src": "/apple-touch-icon.png",
-      "sizes": "180x180",
-      "type": "image/png"
     }
   ],
   "shortcuts": [
@@ -48,25 +31,25 @@
       "name": "Today's Schedule",
       "short_name": "Schedule",
       "url": "/dashboard/bookings",
-      "icons": [{ "src": "/icon-192.png", "sizes": "192x192" }]
+      "icons": [{ "src": "/Aurex%20logo%201.png", "sizes": "512x512" }]
     },
     {
       "name": "Live Attendance",
       "short_name": "Attendance",
       "url": "/dashboard/attendance",
-      "icons": [{ "src": "/icon-192.png", "sizes": "192x192" }]
+      "icons": [{ "src": "/Aurex%20logo%201.png", "sizes": "512x512" }]
     },
     {
       "name": "Clients 360°",
       "short_name": "Clients",
       "url": "/dashboard/clients",
-      "icons": [{ "src": "/icon-192.png", "sizes": "192x192" }]
+      "icons": [{ "src": "/Aurex%20logo%201.png", "sizes": "512x512" }]
     },
     {
       "name": "Payments & Billing",
       "short_name": "Payments",
       "url": "/dashboard/payments",
-      "icons": [{ "src": "/icon-192.png", "sizes": "192x192" }]
+      "icons": [{ "src": "/Aurex%20logo%201.png", "sizes": "512x512" }]
     }
   ]
 }

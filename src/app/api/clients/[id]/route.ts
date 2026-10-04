@@ -165,9 +165,9 @@ export async function DELETE(
     }
 
     const userRole = (session?.user as any)?.role;
-    if (userRole !== 'OWNER') {
+    if (userRole !== 'OWNER' && userRole !== 'MANAGER' && userRole !== 'RECEPTIONIST') {
       return NextResponse.json(
-        { error: 'Forbidden: Only OWNER can permanently delete client records' },
+        { error: 'Forbidden: Insufficient permissions to delete client records' },
         { status: 403 }
       );
     }

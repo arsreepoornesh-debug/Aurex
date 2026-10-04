@@ -38,9 +38,11 @@ export default function PortalLayout({ children }: { children: React.ReactNode }
       <header className="sticky top-0 z-50 bg-white border-b border-slate-200 shadow-sm">
         <div className="max-w-6xl mx-auto px-4 h-16 flex items-center justify-between">
           <Link href="/portal" className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-xl bg-slate-900 text-emerald-400 flex items-center justify-center font-black shadow-sm">
-              A
-            </div>
+            <img
+              src="/Aurex%20logo%201.png"
+              alt="AUREX Logo"
+              className="w-8 h-8 object-contain rounded-xl shrink-0"
+            />
             <div>
               <span className="font-extrabold text-slate-900 tracking-tight text-base">AUREX</span>
               <span className="text-[10px] text-emerald-600 font-bold block -mt-1 uppercase tracking-wider">

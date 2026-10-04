@@ -259,9 +259,11 @@ export function Sidebar() {
       <div className="flex flex-col min-h-0 flex-1 overflow-y-auto scrollbar-none">
         <div className="p-3.5 border-b border-slate-800 flex items-center justify-between">
           <Link href="/dashboard" className="flex items-center gap-2.5 min-w-0">
-            <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-emerald-600 to-teal-500 flex items-center justify-center shrink-0 shadow-lg shadow-emerald-950 border border-emerald-400/30">
-              <Activity className="w-4 h-4 text-white" />
-            </div>
+            <img
+              src="/Aurex%20logo%201.png"
+              alt="AUREX Logo"
+              className="w-8 h-8 object-contain shrink-0 rounded-lg"
+            />
             {!collapsed && (
               <div className="truncate">
                 <div className="text-sm font-extrabold tracking-wider text-white">AUREX</div>

@@ -14,9 +14,11 @@ export default function SpecialistLayout({ children }: { children: React.ReactNo
       <header className="sticky top-0 z-50 bg-slate-950 border-b border-slate-800 shadow-md">
         <div className="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-emerald-600 to-teal-500 flex items-center justify-center text-white font-bold shadow-lg shadow-emerald-950 border border-emerald-400/30">
-              <Stethoscope className="w-5 h-5" />
-            </div>
+            <img
+              src="/Aurex%20logo%201.png"
+              alt="AUREX Logo"
+              className="w-9 h-9 object-contain rounded-xl shrink-0"
+            />
             <div>
               <div className="flex items-center gap-2">
                 <span className="font-extrabold text-white tracking-tight text-base">AUREX</span>
